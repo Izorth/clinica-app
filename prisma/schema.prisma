@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  rol       Rol      @default(RECEPCIONISTA)
+  creadoEn  DateTime @default(now())
+  medico    Medico?
+}
+
+enum Rol {
+  ADMIN
+  MEDICO
+  RECEPCIONISTA
+}
+
+model Medico {
+  id           String  @id @default(cuid())
+  usuarioId    String  @unique
+  usuario      Usuario @relation(fields: [usuarioId], references: [id])
+  especialidad String
+  horas        Hora[]
+}
+
+model Paciente {
+  id        String    @id @default(cuid())
+  rut       String    @unique
+  nombre    String
+  apellido  String
+  email     String?
+  telefono  String
+  fechaNac  DateTime?
+  creadoEn  DateTime  @default(now())
+  fichas    Ficha[]
+  horas     Hora[]
+  pagos     Pago[]
+}
+
+model Hora {
+  id        String      @id @default(cuid())
+  fecha     DateTime
+  estado    EstadoHora  @default(PENDIENTE)
+  medicoId  String
+  medico    Medico      @relation(fields: [medicoId], references: [id])
+  pacienteId String
+  paciente  Paciente    @relation(fields: [pacienteId], references: [id])
+  pago      Pago?
+  creadoEn  DateTime    @default(now())
+}
+
+enum EstadoHora {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+  COMPLETADA
+}
+
+model Ficha {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  diagnostico String
+  tratamiento String?
+  notas       String?
+  creadoEn    DateTime @default(now())
+}
+
+model Pago {
+  id         String     @id @default(cuid())
+  horaId     String     @unique
+  hora       Hora       @relation(fields: [horaId], references: [id])
+  pacienteId String
+  paciente   Paciente   @relation(fields: [pacienteId], references: [id])
+  monto      Int
+  estado     EstadoPago @default(PENDIENTE)
+  creadoEn   DateTime   @default(now())
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PAGADO
+  FALLIDO
+}
