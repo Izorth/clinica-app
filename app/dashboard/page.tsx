@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 
+import { DashboardNav } from "@/components/dashboard/nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { authOptions } from "@/lib/auth";
 
@@ -94,6 +95,8 @@ export default async function DashboardPage() {
           <SignOutButton />
         </div>
       </header>
+
+      <DashboardNav />
 
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         <section>

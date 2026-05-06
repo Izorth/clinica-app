@@ -9,7 +9,7 @@ type Paciente = {
   nombre: string;
   apellido: string;
   telefono: string;
-  email: string;
+  email: string | null;
 };
 
 type PacientesListProps = {

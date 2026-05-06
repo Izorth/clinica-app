@@ -2,8 +2,9 @@ import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 
+import { DashboardNav } from "@/components/dashboard/nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
-import { PacientesList } from "@/components/pacientes/pacientes-list";
+import { PacientesLoader } from "@/components/pacientes/pacientes-loader";
 import { authOptions } from "@/lib/auth";
 
 function rolLabel(rol: string) {
@@ -14,41 +15,6 @@ function rolLabel(rol: string) {
   };
   return labels[rol] ?? rol;
 }
-
-const pacientes = [
-  {
-    id: "p-001",
-    rut: "12.345.678-9",
-    nombre: "María",
-    apellido: "González",
-    telefono: "+56 9 9123 4567",
-    email: "maria.gonzalez@email.cl",
-  },
-  {
-    id: "p-002",
-    rut: "14.567.890-1",
-    nombre: "Pedro",
-    apellido: "Soto",
-    telefono: "+56 9 8765 4321",
-    email: "pedro.soto@email.cl",
-  },
-  {
-    id: "p-003",
-    rut: "17.234.567-4",
-    nombre: "Laura",
-    apellido: "Fuentes",
-    telefono: "+56 9 7123 9876",
-    email: "laura.fuentes@email.cl",
-  },
-  {
-    id: "p-004",
-    rut: "19.876.543-2",
-    nombre: "Jorge",
-    apellido: "Valdés",
-    telefono: "+56 9 6987 1122",
-    email: "jorge.valdes@email.cl",
-  },
-] as const;
 
 export default async function PacientesPage() {
   const session = await getServerSession(authOptions);
@@ -81,14 +47,10 @@ export default async function PacientesPage() {
         </div>
       </header>
 
+      <DashboardNav />
+
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="inline-flex rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          >
-            Volver al dashboard
-          </Link>
           <Link
             href="/dashboard/pacientes/nuevo"
             className="inline-flex rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -97,7 +59,7 @@ export default async function PacientesPage() {
           </Link>
         </div>
 
-        <PacientesList pacientes={[...pacientes]} />
+        <PacientesLoader />
       </main>
     </div>
   );
