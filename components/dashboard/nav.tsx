@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "Pacientes", href: "/dashboard/pacientes", disabled: false },
-  { label: "Agenda", href: "/dashboard/agenda", disabled: true },
-  { label: "Médicos", href: "/dashboard/medicos", disabled: true },
+  { label: "Agenda", href: "/dashboard/agenda", disabled: false },
+  { label: "Médicos", href: "/dashboard/medicos", disabled: false },
 ] as const;
 
 export function DashboardNav() {
