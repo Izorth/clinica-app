@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { supabaseClient } from "@/lib/supabase-client";
+
 import type { EstadoHora, Hora } from "./hora-card";
 import { NuevaHoraModal } from "./nueva-hora-modal";
 import { VistaMensual } from "./vista-mensual";
@@ -110,15 +112,39 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
       vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
     let controller = new AbortController();
 
-    const interval = setInterval(() => {
+    const refresh = () => {
       controller.abort();
       controller = new AbortController();
       fetchHoras(inicio, fin, filtroId(medicoFiltro));
-    }, 30000);
+    };
+
+    // Polling de respaldo (por si Realtime no está disponible)
+    const interval = setInterval(refresh, 30000);
+
+    // Suscripción realtime: refresca al instante cuando cambia la tabla Hora
+    // (p.ej. al confirmar/cancelar desde WhatsApp via webhook de Twilio).
+    const channel = supabaseClient
+      .channel("agenda-hora-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Hora" },
+        () => {
+          refresh();
+        },
+      )
+      .subscribe();
+
+    // Refresca también al volver a enfocar la pestaña/ventana
+    const handleFocus = () => refresh();
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
 
     return () => {
       clearInterval(interval);
       controller.abort();
+      supabaseClient.removeChannel(channel);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
     };
   }, [fechaBase, vista, medicoFiltro, fetchHoras]);
 

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { supabaseClient } from "@/lib/supabase-client";
 
 type AgendaHora = {
   id: string;
@@ -59,20 +61,47 @@ function formatHoraSantiago(iso: string) {
 export function DashboardContent(initialStats: Props) {
   const [stats, setStats] = useState<Stats>(initialStats);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/dashboard/stats");
-        if (res.ok) {
-          const data = (await res.json()) as Stats;
-          setStats(data);
-        }
-      } catch {
-        // silencio — no interrumpir la UI por un fallo de red
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard/stats", { cache: "no-store" });
+      if (res.ok) {
+        const data = (await res.json()) as Stats;
+        setStats(data);
       }
-    }, 30000);
-    return () => clearInterval(interval);
+    } catch {
+      // silencio — no interrumpir la UI por un fallo de red
+    }
   }, []);
+
+  useEffect(() => {
+    // Polling de respaldo (por si Realtime no está disponible)
+    const interval = setInterval(fetchStats, 30000);
+
+    // Suscripción realtime: refresca al instante cuando cambia la tabla Hora
+    // (p.ej. al confirmar/cancelar desde WhatsApp via webhook de Twilio).
+    const channel = supabaseClient
+      .channel("dashboard-hora-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Hora" },
+        () => {
+          fetchStats();
+        },
+      )
+      .subscribe();
+
+    // Refresca también al volver a enfocar la pestaña/ventana
+    const handleFocus = () => fetchStats();
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      supabaseClient.removeChannel(channel);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [fetchStats]);
 
   const summaryCards = [
     {
