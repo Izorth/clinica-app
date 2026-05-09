@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-import { supabaseClient } from "@/lib/supabase-client";
 
 type Ficha = {
   id: string;
@@ -106,24 +105,13 @@ export function PacienteFichaContent({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => {
-    const channel = supabaseClient
-      .channel(`horas-paciente-${id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "Hora", filter: `pacienteId=eq.${id}` },
-        (payload) => {
-          setHorasAgendadas((prev) =>
-            prev.map((h) =>
-              h.id === payload.new.id ? { ...h, estado: payload.new.estado as string } : h
-            )
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabaseClient.removeChannel(channel);
-    };
+    const interval = setInterval(() => {
+      fetch(`/api/pacientes/${id}`)
+        .then((res) => (res.ok ? (res.json() as Promise<{ horas: Hora[] }>) : null))
+        .then((data) => { if (data) setHorasAgendadas(data.horas); })
+        .catch(() => undefined);
+    }, 10000);
+    return () => clearInterval(interval);
   }, [id]);
 
   if (loading) {
