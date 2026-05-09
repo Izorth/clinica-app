@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { supabaseClient } from "@/lib/supabase-client";
 import type { EstadoHora, Hora } from "./hora-card";
 import { NuevaHoraModal } from "./nueva-hora-modal";
 import { VistaMensual } from "./vista-mensual";
@@ -104,6 +105,37 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
   function filtroId(filtro: string) {
     return filtro !== "todos" ? filtro : undefined;
   }
+
+  useEffect(() => {
+    const [inicio, fin] =
+      vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
+
+    const channel = supabaseClient
+      .channel("horas-changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "Hora" },
+        (payload) => {
+          setHoras((prev) =>
+            prev.map((h) =>
+              h.id === payload.new.id ? { ...h, estado: payload.new.estado as EstadoHora } : h
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Hora" },
+        () => {
+          fetchHoras(inicio, fin, filtroId(medicoFiltro));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabaseClient.removeChannel(channel);
+    };
+  }, [fechaBase, vista, medicoFiltro, fetchHoras]);
 
   function navigate(delta: number) {
     const newBase = new Date(fechaBase);

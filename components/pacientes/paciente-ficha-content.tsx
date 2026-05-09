@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { supabaseClient } from "@/lib/supabase-client";
+
 type Ficha = {
   id: string;
   diagnostico: string;
@@ -59,6 +61,7 @@ export function PacienteFichaContent({ id }: { id: string }) {
   const [paciente, setPaciente] = useState<PacienteDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [horasAgendadas, setHorasAgendadas] = useState<Hora[]>([]);
   const [recordatorioLoading, setRecordatorioLoading] = useState(false);
   const [recordatorioMsg, setRecordatorioMsg] = useState<{
     ok: boolean;
@@ -94,12 +97,34 @@ export function PacienteFichaContent({ id }: { id: string }) {
       })
       .then((data) => {
         setPaciente(data);
+        setHorasAgendadas(data.horas);
         setLoading(false);
       })
       .catch((err: Error) => {
         setError(err.message);
         setLoading(false);
       });
+  }, [id]);
+
+  useEffect(() => {
+    const channel = supabaseClient
+      .channel(`horas-paciente-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "Hora", filter: `pacienteId=eq.${id}` },
+        (payload) => {
+          setHorasAgendadas((prev) =>
+            prev.map((h) =>
+              h.id === payload.new.id ? { ...h, estado: payload.new.estado as string } : h
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabaseClient.removeChannel(channel);
+    };
   }, [id]);
 
   if (loading) {
@@ -224,8 +249,8 @@ export function PacienteFichaContent({ id }: { id: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {paciente.horas.length > 0 ? (
-                paciente.horas.map((hora) => (
+              {horasAgendadas.length > 0 ? (
+                horasAgendadas.map((hora) => (
                   <tr key={hora.id}>
                     <td className="px-2 py-3">{formatFecha(hora.fecha)}</td>
                     <td className="px-2 py-3">{formatHora(hora.fecha)}</td>
