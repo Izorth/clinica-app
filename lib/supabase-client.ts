@@ -1,6 +1,14 @@
-// En Supabase Dashboard → Database → Replication
-// Activar la tabla "Hora" para recibir eventos realtime:
-// Source (supabase_realtime) → Tables → activar "Hora"
+// CONFIGURACIÓN REALTIME EN SUPABASE:
+// 1. Dashboard → Database → Replication → Source (supabase_realtime) → Tables → activar "Hora"
+//
+// 2. Ejecutar en Supabase SQL Editor para habilitar RLS (requerido por postgres_changes):
+//
+//    ALTER TABLE "Hora" ENABLE ROW LEVEL SECURITY;
+//
+//    CREATE POLICY "allow_all" ON "Hora"
+//    FOR ALL USING (true);
+//
+// (Política permisiva temporal — restringir antes de producción real)
 
 import { createClient } from "@supabase/supabase-js";
 

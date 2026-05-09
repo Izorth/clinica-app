@@ -45,9 +45,8 @@ function formatFecha(iso: string) {
 
 function formatHora(iso: string) {
   const d = new Date(iso);
-  const h = String(d.getUTCHours()).padStart(2, "0");
-  const min = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${h}:${min}`;
+  const s = new Date(d.toLocaleString("en-US", { timeZone: "America/Santiago" }));
+  return `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`;
 }
 
 function estadoClass(estado: string) {

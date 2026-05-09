@@ -69,9 +69,9 @@ export function NuevaHoraModal({
     setError("");
 
     try {
-      const offsetChile = 4 * 60;
-      const fechaLocal = new Date(`${form.fecha}T${form.hora}:00`);
-      const fechaUTC = new Date(fechaLocal.getTime() + offsetChile * 60 * 1000);
+      const [year, month, day] = form.fecha.split("-").map(Number);
+      const [hours, minutes] = form.hora.split(":").map(Number);
+      const fechaUTC = new Date(Date.UTC(year, month - 1, day, hours + 4, minutes));
 
       const res = await fetch("/api/horas", {
         method: "POST",

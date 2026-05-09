@@ -69,7 +69,12 @@ export function VistaMensual({ horas, fechaBase, onSlotClick, onHoraClick }: Vis
         {days.map((day, i) => {
           const isCurrentMonth = day.getMonth() === month;
           const isToday = isSameDay(day, today);
-          const dayHoras = horas.filter((h) => isSameDay(new Date(h.fecha), day));
+          const dayHoras = horas.filter((h) =>
+            isSameDay(
+              new Date(new Date(h.fecha).toLocaleString("en-US", { timeZone: "America/Santiago" })),
+              day
+            )
+          );
 
           const slotDate = new Date(day);
           slotDate.setHours(9, 0, 0, 0);

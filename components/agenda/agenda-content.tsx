@@ -137,6 +137,15 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
     };
   }, [fechaBase, vista, medicoFiltro, fetchHoras]);
 
+  useEffect(() => {
+    const [inicio, fin] =
+      vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
+    const interval = setInterval(() => {
+      fetchHoras(inicio, fin, filtroId(medicoFiltro));
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fechaBase, vista, medicoFiltro, fetchHoras]);
+
   function navigate(delta: number) {
     const newBase = new Date(fechaBase);
     if (vista === "semanal") {

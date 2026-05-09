@@ -48,13 +48,11 @@ export default async function DashboardPage() {
   }
 
   const ahora = new Date();
-  const offsetMs = 4 * 60 * 60 * 1000;
-  const ahoraChile = new Date(ahora.getTime() - offsetMs);
+  const hoy = new Date(ahora.toLocaleString("en-US", { timeZone: "America/Santiago" }));
   const inicioHoy = new Date(
-    Date.UTC(ahoraChile.getUTCFullYear(), ahoraChile.getUTCMonth(), ahoraChile.getUTCDate()) + offsetMs
+    Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 4, 0, 0)
   );
   const finHoy = new Date(inicioHoy.getTime() + 24 * 60 * 60 * 1000);
-  const hoy = ahoraChile;
   const hace7dias = new Date(inicioHoy.getTime() - 7 * 24 * 60 * 60 * 1000);
   const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -177,9 +175,9 @@ export default async function DashboardPage() {
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                     {agendaHoy.map((hora) => {
                       const fecha = new Date(hora.fecha);
-                      const fechaChile = new Date(fecha.getTime() - offsetMs);
-                      const hh = String(fechaChile.getHours()).padStart(2, "0");
-                      const mm = String(fechaChile.getMinutes()).padStart(2, "0");
+                      const fdSantiago = new Date(fecha.toLocaleString("en-US", { timeZone: "America/Santiago" }));
+                      const hh = String(fdSantiago.getHours()).padStart(2, "0");
+                      const mm = String(fdSantiago.getMinutes()).padStart(2, "0");
                       return (
                         <tr
                           key={hora.id}
