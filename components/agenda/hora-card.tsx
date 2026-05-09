@@ -24,8 +24,10 @@ type HoraCardProps = {
 
 export function HoraCard({ hora, onClick }: HoraCardProps) {
   const fecha = new Date(hora.fecha);
-  const hh = String(fecha.getHours()).padStart(2, "0");
-  const mm = String(fecha.getMinutes()).padStart(2, "0");
+  const offsetMs = 4 * 60 * 60 * 1000;
+  const fechaChile = new Date(fecha.getTime() - offsetMs);
+  const hh = String(fechaChile.getHours()).padStart(2, "0");
+  const mm = String(fechaChile.getMinutes()).padStart(2, "0");
 
   return (
     <button

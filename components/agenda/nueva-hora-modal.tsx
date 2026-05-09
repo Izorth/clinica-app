@@ -69,15 +69,15 @@ export function NuevaHoraModal({
     setError("");
 
     try {
-      const [hh, mm] = form.hora.split(":").map(Number);
-      const [yyyy, mo, dd] = form.fecha.split("-").map(Number);
-      const fechaHora = new Date(yyyy, mo - 1, dd, hh, mm, 0, 0);
+      const offsetChile = 4 * 60;
+      const fechaLocal = new Date(`${form.fecha}T${form.hora}:00`);
+      const fechaUTC = new Date(fechaLocal.getTime() + offsetChile * 60 * 1000);
 
       const res = await fetch("/api/horas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fecha: fechaHora.toISOString(),
+          fecha: fechaUTC.toISOString(),
           medicoId: form.medicoId,
           pacienteId: form.pacienteId,
           estado: form.estado,

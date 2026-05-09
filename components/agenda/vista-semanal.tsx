@@ -87,8 +87,9 @@ export function VistaSemanal({ horas, fechaBase, onSlotClick, onHoraClick }: Vis
                 {timeLabel}
               </div>
               {days.map((day, di) => {
+                const offsetMs = 4 * 60 * 60 * 1000;
                 const horasSlot = horas.filter((hora) => {
-                  const fd = new Date(hora.fecha);
+                  const fd = new Date(new Date(hora.fecha).getTime() - offsetMs);
                   return (
                     isSameDay(fd, day) &&
                     fd.getHours() === h &&
