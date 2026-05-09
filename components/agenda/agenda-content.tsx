@@ -108,10 +108,18 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
   useEffect(() => {
     const [inicio, fin] =
       vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
+    let controller = new AbortController();
+
     const interval = setInterval(() => {
+      controller.abort();
+      controller = new AbortController();
       fetchHoras(inicio, fin, filtroId(medicoFiltro));
-    }, 10000);
-    return () => clearInterval(interval);
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
   }, [fechaBase, vista, medicoFiltro, fetchHoras]);
 
   function navigate(delta: number) {

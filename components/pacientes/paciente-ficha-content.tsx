@@ -105,13 +105,21 @@ export function PacienteFichaContent({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => {
+    let controller = new AbortController();
+
     const interval = setInterval(() => {
-      fetch(`/api/pacientes/${id}`)
+      controller.abort();
+      controller = new AbortController();
+      fetch(`/api/pacientes/${id}`, { signal: controller.signal })
         .then((res) => (res.ok ? (res.json() as Promise<{ horas: Hora[] }>) : null))
         .then((data) => { if (data) setHorasAgendadas(data.horas); })
         .catch(() => undefined);
-    }, 10000);
-    return () => clearInterval(interval);
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
   }, [id]);
 
   if (loading) {
