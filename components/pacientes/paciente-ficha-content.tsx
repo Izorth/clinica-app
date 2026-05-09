@@ -59,6 +59,31 @@ export function PacienteFichaContent({ id }: { id: string }) {
   const [paciente, setPaciente] = useState<PacienteDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recordatorioLoading, setRecordatorioLoading] = useState(false);
+  const [recordatorioMsg, setRecordatorioMsg] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
+
+  async function enviarRecordatorio() {
+    setRecordatorioLoading(true);
+    setRecordatorioMsg(null);
+    try {
+      const res = await fetch(`/api/pacientes/${id}/recordatorio`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (data.ok) {
+        setRecordatorioMsg({ ok: true, text: "Recordatorio enviado por WhatsApp" });
+      } else {
+        setRecordatorioMsg({ ok: false, text: data.error ?? "Error al enviar" });
+      }
+    } catch {
+      setRecordatorioMsg({ ok: false, text: "Error de conexión" });
+    } finally {
+      setRecordatorioLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/pacientes/${id}`)
@@ -136,13 +161,30 @@ export function PacienteFichaContent({ id }: { id: string }) {
           <h2 className="text-base font-semibold">
             Historial de fichas médicas
           </h2>
-          <button
-            type="button"
-            className="inline-flex rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Agregar nueva ficha médica
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={enviarRecordatorio}
+              disabled={recordatorioLoading || !paciente.telefono}
+              className="inline-flex rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+            >
+              {recordatorioLoading ? "Enviando..." : "📱 Enviar recordatorio"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Agregar nueva ficha médica
+            </button>
+          </div>
         </div>
+        {recordatorioMsg && (
+          <p
+            className={`mt-2 text-sm ${recordatorioMsg.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+          >
+            {recordatorioMsg.text}
+          </p>
+        )}
         <div className="mt-4 space-y-3">
           {paciente.fichas.length > 0 ? (
             paciente.fichas.map((ficha) => (

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enviarRecordatorioTemplate } from "@/lib/twilio";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const horaInclude = {
     },
   },
   paciente: {
-    select: { id: true, nombre: true, apellido: true, rut: true },
+    select: { id: true, nombre: true, apellido: true, rut: true, telefono: true },
   },
 } as const;
 
@@ -73,6 +74,11 @@ export async function POST(request: NextRequest) {
       },
       include: horaInclude,
     });
+
+    if (hora.paciente.telefono) {
+      void enviarRecordatorioTemplate(hora.paciente.telefono, hora.fecha);
+    }
+
     return Response.json(hora, { status: 201 });
   } catch {
     return Response.json({ error: "Error al crear la hora" }, { status: 500 });
