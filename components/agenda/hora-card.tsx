@@ -11,10 +11,17 @@ export type Hora = {
 };
 
 const estadoClases: Record<EstadoHora, string> = {
-  PENDIENTE: "bg-yellow-100 border-yellow-400 text-yellow-800",
-  CONFIRMADA: "bg-green-100 border-green-400 text-green-800",
-  CANCELADA: "bg-red-100 border-red-400 text-red-800",
-  COMPLETADA: "bg-zinc-100 border-zinc-400 text-zinc-600",
+  PENDIENTE: "bg-yellow-100 border-yellow-400/30 text-yellow-800",
+  CONFIRMADA: "bg-green-100 border-green-400/30 text-green-800",
+  CANCELADA: "bg-red-100 border-red-400/30 text-red-800",
+  COMPLETADA: "bg-zinc-100 border-zinc-400/30 text-zinc-600",
+};
+
+const estadoDotClases: Record<EstadoHora, string> = {
+  PENDIENTE: "bg-yellow-500",
+  CONFIRMADA: "bg-green-500",
+  CANCELADA: "bg-red-500",
+  COMPLETADA: "bg-zinc-400",
 };
 
 type HoraCardProps = {
@@ -33,7 +40,8 @@ export function HoraCard({ hora, onClick }: HoraCardProps) {
       onClick={onClick}
       className={`w-full rounded border px-1.5 py-1 text-left text-xs leading-tight transition-opacity hover:opacity-75 ${estadoClases[hora.estado]}`}
     >
-      <p className="font-semibold">
+      <p className="flex items-center gap-1 font-semibold">
+        <span className={`h-1.5 w-1.5 rounded-full ${estadoDotClases[hora.estado]}`} />
         {hh}:{mm}
       </p>
       <p className="truncate">

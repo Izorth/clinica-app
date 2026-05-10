@@ -1,30 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { AlertCircle, Clock, TrendingUp, Users } from "lucide-react";
+import { useEffect } from "react";
 
 import { supabaseClient } from "@/lib/supabase-client";
-
-type AgendaHora = {
-  id: string;
-  fecha: string;
-  estado: string;
-  paciente: { nombre: string; apellido: string };
-  medico: { usuario: { nombre: string } };
-};
-
-type Stats = {
-  totalPacientes: number;
-  pacientesEstaSemana: number;
-  horasHoy: number;
-  horasHoyConfirmadas: number;
-  horasPendientes: number;
-  ingresosMes: number;
-  mesLabel: string;
-  fechaLabel: string;
-  agendaHoy: AgendaHora[];
-};
-
-type Props = Stats;
+import { useDashboardStats } from "@/lib/hooks/useDashboardStats";
+import { DashboardSkeleton } from "./dashboard-skeleton";
 
 function formatMonto(monto: number): string {
   if (monto >= 1_000_000) return `$${(monto / 1_000_000).toFixed(1)}M`;
@@ -45,6 +28,15 @@ function estadoBadgeClass(estado: string) {
   }
 }
 
+function estadoDotClass(estado: string) {
+  switch (estado) {
+    case "CONFIRMADA": return "bg-green-500";
+    case "PENDIENTE": return "bg-yellow-500";
+    case "CANCELADA": return "bg-red-500";
+    default: return "bg-zinc-400";
+  }
+}
+
 const ESTADO_LABELS: Record<string, string> = {
   PENDIENTE: "Pendiente",
   CONFIRMADA: "Confirmada",
@@ -58,92 +50,91 @@ function formatHoraSantiago(iso: string) {
   return `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`;
 }
 
-export function DashboardContent(initialStats: Props) {
-  const [stats, setStats] = useState<Stats>(initialStats);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dashboard/stats", { cache: "no-store" });
-      if (res.ok) {
-        const data = (await res.json()) as Stats;
-        setStats(data);
-      }
-    } catch {
-      // silencio — no interrumpir la UI por un fallo de red
-    }
-  }, []);
+export function DashboardContent() {
+  const queryClient = useQueryClient();
+  const { data: stats, isLoading } = useDashboardStats();
 
   useEffect(() => {
-    // Polling de respaldo (por si Realtime no está disponible)
-    const interval = setInterval(fetchStats, 30000);
-
-    // Suscripción realtime: refresca al instante cuando cambia la tabla Hora
-    // (p.ej. al confirmar/cancelar desde WhatsApp via webhook de Twilio).
     const channel = supabaseClient
       .channel("dashboard-hora-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "Hora" },
         () => {
-          fetchStats();
+          void queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
         },
       )
       .subscribe();
 
-    // Refresca también al volver a enfocar la pestaña/ventana
-    const handleFocus = () => fetchStats();
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleFocus);
-
     return () => {
-      clearInterval(interval);
-      supabaseClient.removeChannel(channel);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleFocus);
+      void supabaseClient.removeChannel(channel);
     };
-  }, [fetchStats]);
+  }, [queryClient]);
+
+  if (isLoading || !stats) {
+    return <DashboardSkeleton />;
+  }
 
   const summaryCards = [
     {
       title: "Total Pacientes",
       value: stats.totalPacientes.toString(),
       hint: `+${stats.pacientesEstaSemana} esta semana`,
+      icon: Users,
+      iconClass: "text-zinc-400",
     },
     {
       title: "Horas de Hoy",
       value: stats.horasHoy.toString(),
       hint: `${stats.horasHoyConfirmadas} confirmadas`,
+      icon: Clock,
+      iconClass: "text-zinc-400",
     },
     {
       title: "Horas Pendientes",
       value: stats.horasPendientes.toString(),
       hint: "Requieren confirmación",
+      icon: AlertCircle,
+      iconClass: "text-amber-500",
     },
     {
       title: "Ingresos del Mes",
       value: formatMonto(stats.ingresosMes),
       hint: stats.mesLabel,
+      icon: TrendingUp,
+      iconClass: "text-emerald-500",
     },
   ];
 
   return (
-    <main className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <motion.main
+      className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
       <section>
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Resumen</h2>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Datos en tiempo real desde la base de datos.
         </p>
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {summaryCards.map((card) => (
-            <li
-              key={card.title}
-              className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{card.title}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{card.value}</p>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">{card.hint}</p>
-            </li>
-          ))}
+          {summaryCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <li
+                key={card.title}
+                className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="flex items-start justify-between">
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{card.title}</p>
+                  <Icon className={`h-5 w-5 ${card.iconClass}`} />
+                </div>
+                <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{card.value}</p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">{card.hint}</p>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -174,7 +165,7 @@ export function DashboardContent(initialStats: Props) {
                   {stats.agendaHoy.map((hora) => (
                     <tr
                       key={hora.id}
-                      className="transition-colors hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40"
+                      className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
                         {formatHoraSantiago(hora.fecha)}
@@ -187,8 +178,9 @@ export function DashboardContent(initialStats: Props) {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${estadoBadgeClass(hora.estado)}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full border border-current/20 px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${estadoBadgeClass(hora.estado)}`}
                         >
+                          <span className={`h-1.5 w-1.5 rounded-full ${estadoDotClass(hora.estado)}`} />
                           {ESTADO_LABELS[hora.estado] ?? hora.estado}
                         </span>
                       </td>
@@ -200,6 +192,6 @@ export function DashboardContent(initialStats: Props) {
           )}
         </div>
       </section>
-    </main>
+    </motion.main>
   );
 }

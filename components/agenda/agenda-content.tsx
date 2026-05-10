@@ -1,32 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
 
+import { useHoras } from "@/lib/hooks/useHoras";
+import { useMedicos } from "@/lib/hooks/useMedicos";
+import { usePacientes } from "@/lib/hooks/usePacientes";
 import { supabaseClient } from "@/lib/supabase-client";
 
 import type { EstadoHora, Hora } from "./hora-card";
 import { NuevaHoraModal } from "./nueva-hora-modal";
 import { VistaMensual } from "./vista-mensual";
 import { VistaSemanal } from "./vista-semanal";
-
-type Medico = {
-  id: string;
-  especialidad: string;
-  usuario: { nombre: string };
-};
-
-type Paciente = {
-  id: string;
-  nombre: string;
-  apellido: string;
-  rut: string;
-};
-
-type AgendaContentProps = {
-  medicos: Medico[];
-  pacientes: Paciente[];
-  horasIniciales: Hora[];
-};
 
 type Vista = "semanal" | "mensual";
 
@@ -72,111 +58,64 @@ function periodoLabel(vista: Vista, fechaBase: Date): string {
   return fechaBase.toLocaleDateString("es-CL", { month: "long", year: "numeric" });
 }
 
-export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaContentProps) {
+export function AgendaContent() {
+  const queryClient = useQueryClient();
+
   const [vista, setVista] = useState<Vista>("semanal");
   const [fechaBase, setFechaBase] = useState(new Date());
-  const [horas, setHoras] = useState<Hora[]>(horasIniciales);
-  const [loading, setLoading] = useState(false);
+  const [medicoFiltro, setMedicoFiltro] = useState("todos");
 
   const [nuevoSlot, setNuevoSlot] = useState<Date | null>(null);
   const [selectedHora, setSelectedHora] = useState<Hora | null>(null);
   const [estadoEditando, setEstadoEditando] = useState<string>("");
-  const [accionLoading, setAccionLoading] = useState(false);
   const [accionError, setAccionError] = useState("");
 
-  const [medicoFiltro, setMedicoFiltro] = useState("todos");
+  const [inicio, fin] =
+    vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
 
-  const fetchHoras = useCallback(async (inicio: Date, fin: Date, medicoId?: string) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        fechaInicio: inicio.toISOString(),
-        fechaFin: fin.toISOString(),
-      });
-      if (medicoId) params.set("medicoId", medicoId);
-      const res = await fetch(`/api/horas?${params}`);
-      if (res.ok) {
-        setHoras(await res.json());
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const horasParams = {
+    fechaInicio: inicio.toISOString(),
+    fechaFin: fin.toISOString(),
+    ...(medicoFiltro !== "todos" ? { medicoId: medicoFiltro } : {}),
+  };
 
-  function filtroId(filtro: string) {
-    return filtro !== "todos" ? filtro : undefined;
-  }
+  const { data: horas = [], isFetching } = useHoras(horasParams);
+  const { data: medicos = [] } = useMedicos();
+  const { data: pacientes = [] } = usePacientes();
 
+  // Invalidate on realtime events from Supabase
   useEffect(() => {
-    const [inicio, fin] =
-      vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
-    let controller = new AbortController();
-
-    const refresh = () => {
-      controller.abort();
-      controller = new AbortController();
-      fetchHoras(inicio, fin, filtroId(medicoFiltro));
-    };
-
-    // Polling de respaldo (por si Realtime no está disponible)
-    const interval = setInterval(refresh, 30000);
-
-    // Suscripción realtime: refresca al instante cuando cambia la tabla Hora
-    // (p.ej. al confirmar/cancelar desde WhatsApp via webhook de Twilio).
     const channel = supabaseClient
       .channel("agenda-hora-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "Hora" },
         () => {
-          refresh();
+          void queryClient.invalidateQueries({ queryKey: ["horas"] });
         },
       )
       .subscribe();
 
-    // Refresca también al volver a enfocar la pestaña/ventana
-    const handleFocus = () => refresh();
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleFocus);
-
     return () => {
-      clearInterval(interval);
-      controller.abort();
-      supabaseClient.removeChannel(channel);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleFocus);
+      void supabaseClient.removeChannel(channel);
     };
-  }, [fechaBase, vista, medicoFiltro, fetchHoras]);
+  }, [queryClient]);
 
   function navigate(delta: number) {
-    const newBase = new Date(fechaBase);
-    if (vista === "semanal") {
-      newBase.setDate(newBase.getDate() + delta * 7);
-    } else {
-      newBase.setMonth(newBase.getMonth() + delta);
-    }
-    setFechaBase(newBase);
-    const [inicio, fin] = vista === "semanal" ? getWeekRange(newBase) : getMonthRange(newBase);
-    fetchHoras(inicio, fin, filtroId(medicoFiltro));
+    setFechaBase((prev) => {
+      const next = new Date(prev);
+      if (vista === "semanal") next.setDate(next.getDate() + delta * 7);
+      else next.setMonth(next.getMonth() + delta);
+      return next;
+    });
   }
 
   function navigateToday() {
-    const today = new Date();
-    setFechaBase(today);
-    const [inicio, fin] = vista === "semanal" ? getWeekRange(today) : getMonthRange(today);
-    fetchHoras(inicio, fin, filtroId(medicoFiltro));
+    setFechaBase(new Date());
   }
 
   function changeVista(v: Vista) {
     setVista(v);
-    const [inicio, fin] = v === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
-    fetchHoras(inicio, fin, filtroId(medicoFiltro));
-  }
-
-  function handleMedicoFiltro(value: string) {
-    setMedicoFiltro(value);
-    const [inicio, fin] = vista === "semanal" ? getWeekRange(fechaBase) : getMonthRange(fechaBase);
-    fetchHoras(inicio, fin, filtroId(value));
   }
 
   function openHoraDetail(hora: Hora) {
@@ -185,47 +124,59 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
     setAccionError("");
   }
 
-  async function handleEstadoChange() {
-    if (!selectedHora || estadoEditando === selectedHora.estado) return;
-    setAccionLoading(true);
-    setAccionError("");
-    try {
-      const res = await fetch(`/api/horas/${selectedHora.id}`, {
+  const updateEstado = useMutation({
+    mutationFn: async ({ id, estado }: { id: string; estado: string }) => {
+      const res = await fetch(`/api/horas/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado: estadoEditando }),
+        body: JSON.stringify({ estado }),
       });
       if (!res.ok) {
         const data = await res.json();
-        setAccionError(data.error ?? "Error al actualizar");
-        return;
+        throw new Error((data as { error?: string }).error ?? "Error al actualizar");
       }
-      const updated: Hora = await res.json();
-      setHoras((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+      return res.json() as Promise<Hora>;
+    },
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: ["horas"] });
       setSelectedHora(updated);
-    } finally {
-      setAccionLoading(false);
-    }
-  }
+    },
+    onError: (err: Error) => {
+      setAccionError(err.message);
+    },
+  });
+
+  const deleteHora = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/horas/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error((data as { error?: string }).error ?? "Error al eliminar");
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["horas"] });
+      setSelectedHora(null);
+    },
+    onError: (err: Error) => {
+      setAccionError(err.message);
+    },
+  });
 
   async function handleEliminar() {
     if (!selectedHora) return;
     if (!confirm("¿Eliminar esta hora? Esta acción no se puede deshacer.")) return;
-    setAccionLoading(true);
-    setAccionError("");
-    try {
-      const res = await fetch(`/api/horas/${selectedHora.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json();
-        setAccionError(data.error ?? "Error al eliminar");
-        return;
-      }
-      setHoras((prev) => prev.filter((h) => h.id !== selectedHora.id));
-      setSelectedHora(null);
-    } finally {
-      setAccionLoading(false);
-    }
+    deleteHora.mutate(selectedHora.id);
   }
+
+  const accionLoading = updateEstado.isPending || deleteHora.isPending;
+
+  // Medicos formatted for the filter/modal (subset of full type)
+  const medicosSimple = medicos.map((m) => ({
+    id: m.id,
+    especialidad: m.especialidad,
+    usuario: { nombre: m.usuario.nombre },
+  }));
 
   return (
     <div className="space-y-4">
@@ -234,8 +185,8 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={medicoFiltro}
-            onChange={(e) => handleMedicoFiltro(e.target.value)}
-            className="min-w-[220px] rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            onChange={(e) => setMedicoFiltro(e.target.value)}
+            className="min-w-[220px] rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 outline-none transition-all duration-150 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
           >
             <option value="todos">Todos los médicos</option>
             {medicos.map((m) => (
@@ -265,7 +216,7 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
           <span className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
             {periodoLabel(vista, fechaBase)}
           </span>
-          {loading && (
+          {isFetching && (
             <span className="text-xs text-zinc-400">Cargando...</span>
           )}
         </div>
@@ -308,18 +259,16 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
       </div>
 
       {/* Nueva hora modal */}
-      {nuevoSlot && (
-        <NuevaHoraModal
-          fechaInicial={nuevoSlot}
-          medicos={medicos}
-          pacientes={pacientes}
-          onClose={() => setNuevoSlot(null)}
-          onSave={(nueva) => {
-            setHoras((prev) => [...prev, nueva]);
-            setNuevoSlot(null);
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {nuevoSlot && (
+          <NuevaHoraModal
+            fechaInicial={nuevoSlot}
+            medicos={medicosSimple}
+            pacientes={pacientes}
+            onClose={() => setNuevoSlot(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Detalle hora modal */}
       {selectedHora && (
@@ -381,7 +330,7 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
                   <select
                     value={estadoEditando}
                     onChange={(e) => setEstadoEditando(e.target.value)}
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition-all duration-150 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                   >
                     {(Object.keys(ESTADO_LABELS) as EstadoHora[]).map((k) => (
                       <option key={k} value={k}>
@@ -390,7 +339,9 @@ export function AgendaContent({ medicos, pacientes, horasIniciales }: AgendaCont
                     ))}
                   </select>
                   <button
-                    onClick={handleEstadoChange}
+                    onClick={() =>
+                      updateEstado.mutate({ id: selectedHora.id, estado: estadoEditando })
+                    }
                     disabled={accionLoading || estadoEditando === selectedHora.estado}
                     className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >

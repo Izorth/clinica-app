@@ -2,10 +2,9 @@ import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 
 import { DashboardNav } from "@/components/dashboard/nav";
-import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { MedicosContent } from "@/components/medicos/medicos-content";
+import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
 function rolLabel(rol: string) {
   const labels: Record<string, string> = {
@@ -21,16 +20,6 @@ export default async function MedicosPage() {
   if (!session?.user) {
     redirect("/login");
   }
-
-  const medicosDb = await prisma.medico.findMany({
-    include: {
-      usuario: { select: { id: true, nombre: true, email: true } },
-      _count: { select: { horas: true } },
-    },
-    orderBy: { usuario: { nombre: "asc" } },
-  });
-
-  const medicos = JSON.parse(JSON.stringify(medicosDb));
 
   const nombre = session.user.name ?? session.user.email ?? "Usuario";
   const rol = session.user.rol ? rolLabel(session.user.rol) : "—";
@@ -48,9 +37,7 @@ export default async function MedicosPage() {
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Rol:{" "}
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                {rol}
-              </span>
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">{rol}</span>
             </p>
           </div>
           <SignOutButton />
@@ -60,7 +47,7 @@ export default async function MedicosPage() {
       <DashboardNav />
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <MedicosContent medicos={medicos} />
+        <MedicosContent />
       </main>
     </div>
   );

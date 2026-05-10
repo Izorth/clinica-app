@@ -7,7 +7,6 @@ import { AgendaContent } from "@/components/agenda/agenda-content";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
 function rolLabel(rol: string) {
   const labels: Record<string, string> = {
@@ -24,34 +23,8 @@ export default async function AgendaPage() {
     redirect("/login");
   }
 
-  const now = new Date();
-  const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
-  const finMes = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-  const [medicos, pacientes, horasDb] = await Promise.all([
-    prisma.medico.findMany({
-      include: { usuario: { select: { nombre: true } } },
-      orderBy: { usuario: { nombre: "asc" } },
-    }),
-    prisma.paciente.findMany({
-      select: { id: true, nombre: true, apellido: true, rut: true },
-      orderBy: { nombre: "asc" },
-    }),
-    prisma.hora.findMany({
-      where: { fecha: { gte: inicioMes, lte: finMes } },
-      include: {
-        medico: { include: { usuario: { select: { nombre: true } } } },
-        paciente: { select: { id: true, nombre: true, apellido: true, rut: true } },
-      },
-      orderBy: { fecha: "asc" },
-    }),
-  ]);
-
   const nombre = session.user.name ?? session.user.email ?? "Usuario";
   const rol = session.user.rol ? rolLabel(session.user.rol) : "—";
-
-  // Serialize Dates to strings for client components
-  const horasIniciales = JSON.parse(JSON.stringify(horasDb));
 
   return (
     <div className="min-h-full bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
@@ -76,11 +49,7 @@ export default async function AgendaPage() {
       <DashboardNav />
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <AgendaContent
-          medicos={medicos}
-          pacientes={pacientes}
-          horasIniciales={horasIniciales}
-        />
+        <AgendaContent />
       </main>
     </div>
   );
