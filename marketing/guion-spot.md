@@ -124,6 +124,32 @@ Produce 3 archivos en `marketing/output/`:
 
 **Si la sincronización audio/video se desvía**, ajusta `DURATION_MS` arriba en el script (default 22500). Por ejemplo, si tu voz tarda 19 segundos, cámbialo a 19500.
 
+## 5.1 · Cómo está compuesto el spot (escenario `public/spot.html`)
+
+El spot vuelve al enfoque de **escenario compuesto**, igual que la primera versión, pero ahora la pantalla que se ve dentro del marco es **la app real actual** (no una recreación). Toda la composición vive en `public/spot.html`:
+
+- **Fondo gradiente** morado→teal con halo (igual estética que el original).
+- **Header**: wordmark `ClinicApp.` (Clinic blanco + App en gradiente azul→cian) + tagline en mayúsculas tracked (`TU CLÍNICA · EN UN SOLO LUGAR`, cambia por escena).
+- **Panel enmarcado**: un `<iframe>` mismo-origen que carga la app real (`/dashboard`, `/dashboard/agenda`, …). Se renderiza a tamaño desktop (1280×800 lógico) y se escala para entrar en el marco → se ve la app completa, como en las capturas. Al estar autenticado por la cookie del login, entra directo sin pantalla de acceso.
+- **Caption kinético** grande abajo, con la palabra clave en gradiente.
+- **CTA final**: pill `Solicita una demo →`.
+
+`export-spot.js` ya no navega ni escribe en la app: solo hace login (deja la cookie), abre `/spot.html` y graba la reproducción en los 3 formatos.
+
+**Para editar copy, tiempos u orden de escenas, se toca el array `SCENES` en `public/spot.html`** (no el script). Cada entrada: `{ dur, route, tagline, cap, title?, cta?, type? }`.
+
+| Escena | Pantalla (route) | Caption | Tagline |
+|---|---|---|---|
+| 1 · Intro | — (título) | — | Tu clínica · en un solo lugar |
+| 2 · Dashboard | `/dashboard` | Todo en **tiempo real** | Tu clínica · en un solo lugar |
+| 3 · Agenda | `/dashboard/agenda` | Una **agenda viva** | Agenda · siempre al día |
+| 4 · Pacientes | `/dashboard/pacientes` | Cualquier **ficha** · en segundos | Pacientes · a un clic |
+| 5 · Nuevo paciente | `/dashboard/pacientes/nuevo` | Un nuevo **paciente** · en menos de un minuto | Registro express |
+| 6 · Ingresos | `/dashboard` | Tus **ingresos** · claros, al día | Ingresos · claros y al día |
+| 7 · CTA | — (título) | `Solicita una demo →` | Tu clínica, en un solo lugar |
+
+En la escena 5 el form se autocompleta con un efecto de tipeo (RUT, nombre, apellido, teléfono) accediendo al iframe mismo-origen.
+
 ## 6 · Iteraciones posibles
 
 - **Ajustar timing por escena**: edita el array `SCENES` en `public/spot.html`. Cada entrada tiene `dur` en ms. La suma debe coincidir con `DURATION_MS - 500` del script de export (los 500ms son fade out de música).

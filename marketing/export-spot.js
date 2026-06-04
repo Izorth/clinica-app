@@ -1,8 +1,9 @@
 /**
  * export-spot.js
  *
- * Graba la app real (localhost:3000/dashboard/agenda) con sesión autenticada
- * en TRES aspect ratios y produce 3 MP4 listos para publicar:
+ * Graba el escenario compuesto (localhost:3000/spot.html — branding ClinicApp +
+ * captions kinéticos + la app real embebida) con sesión autenticada, en TRES
+ * aspect ratios, y produce 3 MP4 listos para publicar:
  *
  *   marketing/output/spot-16x9.mp4   (1920×1080, landing / YouTube)
  *   marketing/output/spot-9x16.mp4   (1080×1920, Reels / TikTok / Stories)
@@ -30,14 +31,14 @@ const fs = require('fs');
 const path = require('path');
 
 // ───── Config ───────────────────────────────────────────────────────────
-const SPOT_URL  = 'http://localhost:3000/dashboard';
+const SPOT_URL  = 'http://localhost:3000/spot.html'; // escenario compuesto (branding + captions + app real en iframe)
 const LOGIN_URL = 'http://localhost:3000/login';
 const CREDENTIALS = {
   email:    process.env.SPOT_EMAIL    || 'admin@clinica.cl',
   password: process.env.SPOT_PASSWORD || 'admin123',
 };
 
-const DURATION_MS  = 22300; // 4s dashboard + 5s agenda + 4s pacientes + 1.5s form + 5s typing + 2.5s form lleno ≈ 22s
+const DURATION_MS  = 22500; // suma de las escenas de public/spot.html (intro + 5 pantallas + CTA)
 const FPS          = 30;
 const CAPTURE_FPS  = 15;  // fps de captura screenshot (más lento pero confiable)
 const BGM_VOLUME  = 0.22;
@@ -48,11 +49,19 @@ const BGM         = path.join(PROJECT_DIR, 'public', 'music', 'spot.mp3');
 
 // captureWidth/captureHeight = viewport de grabación
 // outputWidth/outputHeight   = resolución final del MP4
+// dsf = deviceScaleFactor: captura a mayor densidad para que los formatos
+// verticales no se vean borrosos al escalar al output final.
 const FORMATS = [
-  { name: '16x9', captureWidth: 1920, captureHeight: 1080, outputWidth: 1920, outputHeight: 1080 },
-  { name: '9x16', captureWidth: 390,  captureHeight: 844,  outputWidth: 1080, outputHeight: 1920 },
-  { name: '1x1',  captureWidth: 600,  captureHeight: 600,  outputWidth: 1080, outputHeight: 1080 },
+  { name: '16x9', captureWidth: 1920, captureHeight: 1080, outputWidth: 1920, outputHeight: 1080, dsf: 1 },
+  { name: '9x16', captureWidth: 390,  captureHeight: 844,  outputWidth: 1080, outputHeight: 1920, dsf: 3 },
+  { name: '1x1',  captureWidth: 600,  captureHeight: 600,  outputWidth: 1080, outputHeight: 1080, dsf: 2 },
 ];
+
+// El branding (wordmark ClinicApp), los subtítulos/captions kinéticos, el panel
+// enmarcado con la app real (iframe mismo-origen) y el CTA viven todos en
+// public/spot.html. Este script solo: 1) hace login para dejar la cookie de
+// sesión, 2) abre /spot.html y 3) graba la reproducción. Para editar textos,
+// tiempos o estilo del spot, se edita public/spot.html (array SCENES), no aquí.
 
 // ───── Helpers ──────────────────────────────────────────────────────────
 function sh(cmd) {
@@ -110,7 +119,7 @@ async function renderFormat(fmt, browser) {
   const finalMp4   = path.join(OUTPUT_DIR, `spot-${tag}.mp4`);
 
   const page = await browser.newPage();
-  await page.setViewport({ width: fmt.captureWidth, height: fmt.captureHeight, deviceScaleFactor: 1 });
+  await page.setViewport({ width: fmt.captureWidth, height: fmt.captureHeight, deviceScaleFactor: fmt.dsf || 1 });
 
   await loginIfNeeded(page);
 
@@ -121,19 +130,12 @@ async function renderFormat(fmt, browser) {
     await page.evaluate(() => window.scrollTo(0, 0));
   }
 
-  // Escribe en un campo letra por letra (efecto "humano")
-  async function typeField(selector, text) {
-    await page.focus(selector);
-    for (const char of text) {
-      await page.type(selector, char, { delay: 60 });
-    }
-  }
-
-  // ── Flujo demostrativo ──────────────────────────────────────────────────
-  // Escena 1: Dashboard (~4.5s)
-  console.log('  ▶ Escena 1: Dashboard');
-  await goTo('http://localhost:3000/dashboard');
-  await sleep(500);
+  // ── Grabación del escenario compuesto (public/spot.html) ────────────────
+  // spot.html monta el branding, los captions kinéticos, el panel enmarcado con
+  // la app real (iframe mismo-origen, autenticado por la cookie del login) y el
+  // CTA, y corre su propia línea de tiempo de escenas. Aquí solo capturamos.
+  console.log('  ▶ Abriendo escenario /spot.html');
+  await goTo(SPOT_URL);
 
   // ── Captura frame-by-frame (page.screencast es inestable en Linux headless) ──
   const frameDir = path.join(OUTPUT_DIR, `_frames_${tag}`);
@@ -154,47 +156,14 @@ async function renderFormat(fmt, browser) {
     process.stdout.write(` ${count}f\n`);
   }
 
-  // Escena 1: Dashboard (4s)
-  await captureFrames(4000, 'Dashboard');
+  // Esperar a que el stage arranque su timeline → sincroniza captura ↔ audio
+  await page
+    .waitForFunction(() => window.__spotStarted === true, { timeout: 15000 })
+    .catch(() => console.log('  ⚠ No se detectó __spotStarted; capturando igual.'));
+  await sleep(150); // deja pintar el primer frame de la intro
 
-  // Escena 2: Agenda (5s) — clic en "Agenda" en sidebar
-  console.log('  ▶ Escena 2: Agenda');
-  await page.click('a[href="/dashboard/agenda"]');
-  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => {});
-  await page.addStyleTag({ content: '* { cursor: none !important; }' });
-  await sleep(300);
-  await captureFrames(5000, 'Agenda');
-
-  // Escena 3: Pacientes (4s) — clic en "Pacientes" en sidebar
-  console.log('  ▶ Escena 3: Pacientes');
-  await page.click('a[href="/dashboard/pacientes"]');
-  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => {});
-  await page.addStyleTag({ content: '* { cursor: none !important; }' });
-  await sleep(300);
-  await captureFrames(4000, 'Pacientes');
-
-  // Escena 4: Nuevo paciente form — clic en "+ Nuevo paciente"
-  console.log('  ▶ Escena 4: Nuevo paciente');
-  await page.click('a[href="/dashboard/pacientes/nuevo"]');
-  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => {});
-  await page.addStyleTag({ content: '* { cursor: none !important; }' });
-  await sleep(300);
-
-  // Mostrar el form vacío (1.5s)
-  await captureFrames(1500, 'Form vacío');
-
-  // Escribir datos mientras se graba
-  const typingPromise = (async () => {
-    await typeField('input[name="nombre"]', 'María');
-    await typeField('input[name="apellido"]', 'González');
-    await typeField('input[name="rut"]', '12.345.678-9');
-    await typeField('input[name="telefono"]', '+56 9 8765 4321');
-  })();
-  await captureFrames(5000, 'Llenando form');
-  await typingPromise.catch(() => {}); // asegura que terminó
-
-  // Mostrar form lleno (2.5s)
-  await captureFrames(2500, 'Form lleno');
+  // Capturar toda la reproducción en un solo bloque continuo
+  await captureFrames(DURATION_MS, 'Spot');
 
   console.log(`\n  ✓ ${frameIdx} frames capturados en total.`);
   await page.close();

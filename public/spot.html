@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ClinicApp · Spot</title>
+<style>
+  :root{
+    --g1:#4f86ff; --g2:#22d3ee;            /* gradiente de marca azul→cian */
+    --base-w:1280px; --base-h:800px;        /* tamaño lógico del iframe (look desktop) */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#0b0a1a;
+    font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  /* Fondo gradiente morado→teal con halo */
+  .bg{position:fixed;inset:0;
+    background:
+      radial-gradient(120% 75% at 78% 12%, rgba(24,160,170,.55), transparent 58%),
+      radial-gradient(90% 60% at 12% 8%, rgba(120,70,210,.45), transparent 55%),
+      linear-gradient(150deg,#241152 0%,#1b1546 38%,#0f3a46 100%);}
+  .bg::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(140% 120% at 50% 50%, transparent 55%, rgba(0,0,0,.45));}
+
+  .stage{position:fixed;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:space-between;
+    padding:clamp(16px,4vh,46px) clamp(14px,3vw,40px);}
+
+  /* Header */
+  .header{flex:0 0 auto;text-align:center;opacity:0;transform:translateY(-6px);
+    transition:opacity .5s ease, transform .5s ease;}
+  .header.show{opacity:1;transform:none;}
+  .wordmark{font-weight:800;letter-spacing:-0.02em;line-height:1;
+    font-size:clamp(26px,4.4vw,52px);color:#fff;
+    text-shadow:0 2px 18px rgba(0,0,0,.35);}
+  .wordmark .app{background:linear-gradient(90deg,var(--g1),var(--g2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .wordmark .dot{color:var(--g2)}
+  .tagline{margin-top:clamp(6px,1.2vh,12px);
+    font-size:clamp(9px,1.15vw,13px);font-weight:600;
+    letter-spacing:.36em;text-transform:uppercase;color:rgba(255,255,255,.58);}
+
+  /* Panel con la app */
+  .panel-wrap{flex:1 1 auto;width:100%;display:flex;align-items:center;
+    justify-content:center;min-height:0;padding:clamp(10px,2.4vh,26px) 0;}
+  .panel{position:relative;overflow:hidden;border-radius:clamp(10px,1.4vw,18px);background:#fff;
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);
+    opacity:0;transform:scale(.985);transition:opacity .45s ease, transform .45s ease;}
+  .panel.show{opacity:1;transform:none;}
+  .scaler{position:absolute;top:0;left:0;width:var(--base-w);height:var(--base-h);
+    transform-origin:top left;transform:scale(var(--s,1));}
+  iframe{width:var(--base-w);height:var(--base-h);border:0;background:#fff;display:block;}
+
+  /* Caption kinético */
+  .caption{flex:0 0 auto;text-align:center;color:#fff;min-height:clamp(58px,16vh,150px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(4px,1vh,10px);}
+  .cap-main{font-weight:800;letter-spacing:-0.02em;line-height:1.05;
+    font-size:clamp(28px,5.6vw,64px);text-shadow:0 2px 22px rgba(0,0,0,.4);}
+  .cap-main .g{background:linear-gradient(90deg,var(--g1),var(--g2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .cap-sub{font-size:clamp(11px,1.5vw,18px);font-weight:600;letter-spacing:.28em;
+    text-transform:uppercase;color:rgba(255,255,255,.62);}
+  .anim{animation:rise .5s cubic-bezier(.2,.7,.2,1) both;}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* CTA */
+  .cta-pill{display:inline-flex;align-items:center;gap:9px;margin-top:clamp(8px,1.6vh,16px);
+    background:linear-gradient(90deg,var(--g1),var(--g2));color:#fff;font-weight:700;
+    font-size:clamp(14px,1.9vw,22px);padding:clamp(9px,1.4vh,15px) clamp(18px,2.4vw,30px);
+    border-radius:9999px;box-shadow:0 10px 34px rgba(79,134,255,.45);}
+
+  /* Escena de título (intro / CTA): oculta el panel y centra el contenido */
+  .stage.title .panel-wrap{display:none;}
+  .stage.title{justify-content:center;gap:clamp(10px,2.4vh,22px);}
+  .stage.title .header .wordmark{font-size:clamp(40px,8vw,96px);}
+  .stage.title .header .tagline{font-size:clamp(11px,1.5vw,17px);}
+</style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="stage" id="stage">
+    <div class="header" id="header">
+      <div class="wordmark">Clinic<span class="app">App</span><span class="dot">.</span></div>
+      <div class="tagline" id="tagline">Tu clínica · en un solo lugar</div>
+    </div>
+    <div class="panel-wrap">
+      <div class="panel" id="panel">
+        <div class="scaler" id="scaler">
+          <iframe id="frame" src="about:blank" scrolling="no"></iframe>
+        </div>
+      </div>
+    </div>
+    <div class="caption" id="caption"></div>
+  </div>
+
+<script>
+(function(){
+  var ORIGIN = location.origin;            // mismo origen → iframe autenticado por cookie
+  var frame   = document.getElementById('frame');
+  var scaler  = document.getElementById('scaler');
+  var panel   = document.getElementById('panel');
+  var stage   = document.getElementById('stage');
+  var header  = document.getElementById('header');
+  var caption = document.getElementById('caption');
+  var tagline = document.getElementById('tagline');
+
+  var BASE_W = 1280, BASE_H = 800;
+
+  // ── Línea de tiempo de escenas (ms). Total ≈ 22.5s, alineado con la voz. ──
+  var SCENES = [
+    { dur:2500, title:true,  tagline:'Tu clínica · en un solo lugar',
+      cap:'' },
+    { dur:3500, route:'/dashboard',
+      tagline:'Tu clínica · en un solo lugar',
+      cap:'Todo en <span class="g">tiempo real</span>' },
+    { dur:3500, route:'/dashboard/agenda',
+      tagline:'Agenda · siempre al día',
+      cap:'Una <span class="g">agenda viva</span>' },
+    { dur:3000, route:'/dashboard/pacientes',
+      tagline:'Pacientes · a un clic',
+      cap:'Cualquier <span class="g">ficha</span><span class="cap-sub">en segundos</span>' },
+    { dur:4700, route:'/dashboard/pacientes/nuevo', type:true,
+      tagline:'Registro express',
+      cap:'Un nuevo <span class="g">paciente</span><span class="cap-sub">en menos de un minuto</span>' },
+    { dur:3000, route:'/dashboard',
+      tagline:'Ingresos · claros y al día',
+      cap:'Tus <span class="g">ingresos</span><span class="cap-sub">claros, al día</span>' },
+    { dur:2300, title:true, cta:true,
+      tagline:'Tu clínica, en un solo lugar',
+      cap:'' },
+  ];
+
+  // ── Escala del iframe para que el look desktop entre en el panel ──
+  // Medimos el ÁREA DISPONIBLE (.panel-wrap), no el contenido, y dimensionamos
+  // el panel exactamente al iframe escalado (sin bordes blancos sobrantes).
+  function fit(){
+    var wrap = panel.parentElement;            // .panel-wrap
+    var availW = wrap.clientWidth, availH = wrap.clientHeight;
+    if(!availW || !availH) return;
+    var s = Math.min(availW / BASE_W, availH / BASE_H);
+    scaler.style.setProperty('--s', s);
+    panel.style.width  = Math.round(BASE_W * s) + 'px';
+    panel.style.height = Math.round(BASE_H * s) + 'px';
+  }
+  window.addEventListener('resize', fit);
+
+  // ── Efecto de tipeo en el form de nuevo paciente (mismo origen) ──
+  function typeForm(){
+    try{
+      var win = frame.contentWindow;
+      var doc = frame.contentDocument || win.document;
+      var nativeSetter = Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype, 'value').set;
+      var fields = [
+        ['input[name="rut"]',      '19.876.543-K'],
+        ['input[name="nombre"]',   'Camila'],
+        ['input[name="apellido"]', 'Rojas'],
+        ['input[name="telefono"]', '+56 9 8765 4321'],
+      ];
+      var fi = 0;
+      function nextField(){
+        if(fi >= fields.length) return;
+        var sel = fields[fi][0], txt = fields[fi][1], el = doc.querySelector(sel);
+        fi++;
+        if(!el){ nextField(); return; }
+        el.focus();
+        var ci = 0;
+        (function typeChar(){
+          if(ci <= txt.length){
+            nativeSetter.call(el, txt.slice(0, ci));
+            el.dispatchEvent(new win.Event('input', {bubbles:true}));
+            ci++;
+            setTimeout(typeChar, 55);
+          } else {
+            setTimeout(nextField, 160);
+          }
+        })();
+      }
+      setTimeout(nextField, 650); // espera breve a que el form pinte
+    }catch(e){ /* si el iframe aún no carga, se omite el tipeo */ }
+  }
+
+  // ── Reproducción ──
+  function applyScene(s){
+    tagline.textContent = s.tagline || '';
+    header.classList.add('show');
+
+    if(s.title){
+      stage.classList.add('title');
+      panel.classList.remove('show');
+    } else {
+      stage.classList.remove('title');
+      if(frame.getAttribute('data-route') !== s.route){
+        frame.setAttribute('data-route', s.route);
+        frame.src = ORIGIN + s.route;
+        frame.addEventListener('load', fit, { once:true });
+      }
+      requestAnimationFrame(fit);
+      panel.classList.add('show');
+      if(s.type) frame.addEventListener('load', typeForm, { once:true });
+    }
+
+    // Caption (con animación de entrada)
+    var html = '';
+    if(s.cap)  html += '<div class="cap-main anim">' + s.cap + '</div>';
+    if(s.cta)  html += '<div class="cta-pill anim">Solicita una demo →</div>';
+    caption.innerHTML = html;
+  }
+
+  function start(){
+    window.__spotStarted = true;   // señal para que el grabador sincronice la captura
+    // Preload del dashboard durante la intro para que la escena 2 sea instantánea
+    frame.setAttribute('data-route','/dashboard');
+    frame.src = ORIGIN + '/dashboard';
+    frame.addEventListener('load', fit, { once:true });
+
+    var i = 0;
+    function run(){
+      if(i >= SCENES.length) return;
+      applyScene(SCENES[i]);
+      var d = SCENES[i].dur; i++;
+      setTimeout(run, d);
+    }
+    run();
+  }
+
+  // Espera a fuentes para evitar saltos tipográficos
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); }
+  else { window.addEventListener('load', start); }
+})();
+</script>
+</body>
+</html>
