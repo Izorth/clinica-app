@@ -1,28 +1,15 @@
-import { getServerSession } from "next-auth/next";
 import type { NextRequest } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { requireAuth, requireRole } from "@/lib/auth-helpers";
+import { horaInclude } from "@/lib/prisma/includes";
 import { prisma } from "@/lib/prisma";
 import { enviarRecordatorioTemplate } from "@/lib/twilio";
 
 export const dynamic = "force-dynamic";
 
-const horaInclude = {
-  medico: {
-    include: {
-      usuario: { select: { nombre: true } },
-    },
-  },
-  paciente: {
-    select: { id: true, nombre: true, apellido: true, rut: true, telefono: true },
-  },
-} as const;
-
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireAuth();
+  if (error) return error;
 
   const { searchParams } = request.nextUrl;
   const medicoId = searchParams.get("medicoId");
@@ -49,19 +36,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireRole(["ADMIN", "RECEPCIONISTA"]);
+  if (error) return error;
 
   const body = await request.json();
   const { fecha, medicoId, pacienteId, estado } = body;
 
   if (!fecha || !medicoId || !pacienteId) {
-    return Response.json(
-      { error: "Faltan campos obligatorios" },
-      { status: 400 }
-    );
+    return Response.json({ error: "Faltan campos obligatorios" }, { status: 400 });
   }
 
   try {

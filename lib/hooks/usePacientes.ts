@@ -59,6 +59,5 @@ export function usePaciente(id: string) {
       return res.json() as Promise<PacienteDetalle>;
     },
     enabled: !!id,
-    refetchInterval: 30000,
   });
 }

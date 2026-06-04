@@ -8,20 +8,14 @@ import { useHoras } from "@/lib/hooks/useHoras";
 import { useMedicos } from "@/lib/hooks/useMedicos";
 import { usePacientes } from "@/lib/hooks/usePacientes";
 import { supabaseClient } from "@/lib/supabase-client";
+import { type EstadoHora, ESTADO_LABELS } from "@/lib/utils/estados";
 
-import type { EstadoHora, Hora } from "./hora-card";
+import type { Hora } from "./hora-card";
 import { NuevaHoraModal } from "./nueva-hora-modal";
 import { VistaMensual } from "./vista-mensual";
 import { VistaSemanal } from "./vista-semanal";
 
 type Vista = "semanal" | "mensual";
-
-const ESTADO_LABELS: Record<EstadoHora, string> = {
-  PENDIENTE: "Pendiente",
-  CONFIRMADA: "Confirmada",
-  CANCELADA: "Cancelada",
-  COMPLETADA: "Completada",
-};
 
 function getMonday(d: Date): Date {
   const date = new Date(d);

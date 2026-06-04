@@ -1,3 +1,4 @@
+import { toSantiagoDate } from "@/lib/utils/dates";
 import { HoraCard } from "./hora-card";
 import type { Hora } from "./hora-card";
 
@@ -70,10 +71,7 @@ export function VistaMensual({ horas, fechaBase, onSlotClick, onHoraClick }: Vis
           const isCurrentMonth = day.getMonth() === month;
           const isToday = isSameDay(day, today);
           const dayHoras = horas.filter((h) =>
-            isSameDay(
-              new Date(new Date(h.fecha).toLocaleString("en-US", { timeZone: "America/Santiago" })),
-              day
-            )
+            isSameDay(toSantiagoDate(h.fecha), day)
           );
 
           const slotDate = new Date(day);

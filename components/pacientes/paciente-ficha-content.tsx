@@ -3,6 +3,8 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { usePaciente } from "@/lib/hooks/usePacientes";
+import { formatHoraSantiago } from "@/lib/utils/dates";
+import { estadoBadgeClass, ESTADO_LABELS } from "@/lib/utils/estados";
 
 function formatFecha(iso: string) {
   const d = new Date(iso);
@@ -10,19 +12,6 @@ function formatFecha(iso: string) {
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function formatHora(iso: string) {
-  const d = new Date(iso);
-  const s = new Date(d.toLocaleString("en-US", { timeZone: "America/Santiago" }));
-  return `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`;
-}
-
-function estadoClass(estado: string) {
-  if (estado === "CONFIRMADA") {
-    return "bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-500/30";
-  }
-  return "bg-amber-50 text-amber-900 ring-amber-600/20 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-500/30";
 }
 
 export function PacienteFichaContent({ id }: { id: string }) {
@@ -150,13 +139,11 @@ export function PacienteFichaContent({ id }: { id: string }) {
                 paciente.horas.map((hora) => (
                   <tr key={hora.id}>
                     <td className="px-2 py-3">{formatFecha(hora.fecha)}</td>
-                    <td className="px-2 py-3">{formatHora(hora.fecha)}</td>
+                    <td className="px-2 py-3">{formatHoraSantiago(hora.fecha)}</td>
                     <td className="px-2 py-3">{hora.medico.usuario.nombre}</td>
                     <td className="px-2 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${estadoClass(hora.estado)}`}
-                      >
-                        {hora.estado}
+                      <span className={estadoBadgeClass(hora.estado)}>
+                        {ESTADO_LABELS[hora.estado] ?? hora.estado}
                       </span>
                     </td>
                   </tr>

@@ -1,46 +1,43 @@
-import { getServerSession } from "next-auth/next";
 import type { NextRequest } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { requireAuth, requireRole } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+export async function GET(request: NextRequest) {
+  const { error } = await requireAuth();
+  if (error) return error;
+
+  const q = request.nextUrl.searchParams.get("q")?.trim();
 
   const pacientes = await prisma.paciente.findMany({
+    where: q
+      ? {
+          OR: [
+            { nombre: { contains: q, mode: "insensitive" } },
+            { apellido: { contains: q, mode: "insensitive" } },
+            { rut: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
     orderBy: { creadoEn: "desc" },
-    select: {
-      id: true,
-      rut: true,
-      nombre: true,
-      apellido: true,
-      telefono: true,
-      email: true,
-    },
+    take: 200,
+    select: { id: true, rut: true, nombre: true, apellido: true, telefono: true, email: true },
   });
 
   return Response.json(pacientes);
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireRole(["ADMIN", "RECEPCIONISTA"]);
+  if (error) return error;
 
   const body = await request.json();
   const { rut, nombre, apellido, telefono, email, fechaNac } = body;
 
   if (!rut || !nombre || !apellido || !telefono) {
-    return Response.json(
-      { error: "Faltan campos obligatorios" },
-      { status: 400 }
-    );
+    return Response.json({ error: "Faltan campos obligatorios" }, { status: 400 });
   }
 
   try {
@@ -56,16 +53,8 @@ export async function POST(request: NextRequest) {
     });
     return Response.json(paciente, { status: 201 });
   } catch (error: unknown) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "P2002"
-    ) {
-      return Response.json(
-        { error: "Ya existe un paciente con ese RUT" },
-        { status: 409 }
-      );
+    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+      return Response.json({ error: "Ya existe un paciente con ese RUT" }, { status: 409 });
     }
     return Response.json({ error: "Error al crear paciente" }, { status: 500 });
   }

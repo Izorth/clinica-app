@@ -1,30 +1,17 @@
-import { getServerSession } from "next-auth/next";
 import type { NextRequest } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { requireAuth, requireRole } from "@/lib/auth-helpers";
+import { horaInclude } from "@/lib/prisma/includes";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const horaInclude = {
-  medico: {
-    include: {
-      usuario: { select: { nombre: true } },
-    },
-  },
-  paciente: {
-    select: { id: true, nombre: true, apellido: true, rut: true },
-  },
-} as const;
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireAuth();
+  if (error) return error;
 
   const { id } = await params;
   const hora = await prisma.hora.findUnique({ where: { id }, include: horaInclude });
@@ -40,10 +27,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireRole(["ADMIN", "RECEPCIONISTA", "MEDICO"]);
+  if (error) return error;
 
   const { id } = await params;
   const body = await request.json();
@@ -70,10 +55,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireRole(["ADMIN", "RECEPCIONISTA"]);
+  if (error) return error;
 
   const { id } = await params;
 

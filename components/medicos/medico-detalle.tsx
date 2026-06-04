@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { estadoBadgeClass, ESTADO_LABELS } from "@/lib/utils/estados";
+
 type HoraMedico = {
   id: string;
   fecha: string;
@@ -19,26 +21,6 @@ type MedicoDetalle = {
 type MedicoDetalleProps = {
   medico: MedicoDetalle;
 };
-
-const ESTADO_LABELS: Record<string, string> = {
-  PENDIENTE: "Pendiente",
-  CONFIRMADA: "Confirmada",
-  CANCELADA: "Cancelada",
-  COMPLETADA: "Completada",
-};
-
-function estadoBadgeClass(estado: string) {
-  switch (estado) {
-    case "CONFIRMADA":
-      return "bg-green-100 text-green-800 ring-green-600/20 dark:bg-green-950/50 dark:text-green-300 dark:ring-green-500/30";
-    case "PENDIENTE":
-      return "bg-yellow-100 text-yellow-800 ring-yellow-600/20 dark:bg-yellow-950/50 dark:text-yellow-200 dark:ring-yellow-500/30";
-    case "CANCELADA":
-      return "bg-red-100 text-red-800 ring-red-600/20 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-500/30";
-    default:
-      return "bg-zinc-100 text-zinc-600 ring-zinc-500/10 dark:bg-zinc-800 dark:text-zinc-400";
-  }
-}
 
 function formatFechaHora(iso: string) {
   const d = new Date(iso);
@@ -196,9 +178,7 @@ export function MedicoDetalle({ medico: initial }: MedicoDetalleProps) {
                         {hora.paciente.nombre} {hora.paciente.apellido}
                       </td>
                       <td className="px-2 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${estadoBadgeClass(hora.estado)}`}
-                        >
+                        <span className={estadoBadgeClass(hora.estado)}>
                           {ESTADO_LABELS[hora.estado] ?? hora.estado}
                         </span>
                       </td>

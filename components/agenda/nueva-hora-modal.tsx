@@ -54,6 +54,13 @@ export function NuevaHoraModal({
     estado: "PENDIENTE",
   });
   const [error, setError] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+
+  const pacientesFiltrados = busqueda.length > 1
+    ? pacientes.filter((p) =>
+        `${p.nombre} ${p.apellido} ${p.rut}`.toLowerCase().includes(busqueda.toLowerCase())
+      )
+    : pacientes;
 
   const createHora = useMutation({
     mutationFn: async (body: {
@@ -200,14 +207,22 @@ export function NuevaHoraModal({
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Paciente</label>
+            <input
+              type="search"
+              placeholder="Buscar por nombre o RUT..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className={inputClass}
+            />
             <select
               value={form.pacienteId}
               onChange={(e) => setForm((f) => ({ ...f, pacienteId: e.target.value }))}
               className={inputClass}
               required
+              size={pacientesFiltrados.length > 0 ? Math.min(pacientesFiltrados.length + 1, 6) : 2}
             >
               <option value="">Seleccionar paciente...</option>
-              {pacientes.map((p) => (
+              {pacientesFiltrados.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombre} {p.apellido} ({p.rut})
                 </option>

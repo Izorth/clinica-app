@@ -1,3 +1,4 @@
+import { toSantiagoDate } from "@/lib/utils/dates";
 import { HoraCard } from "./hora-card";
 import type { Hora } from "./hora-card";
 
@@ -88,9 +89,7 @@ export function VistaSemanal({ horas, fechaBase, onSlotClick, onHoraClick }: Vis
               </div>
               {days.map((day, di) => {
                 const horasSlot = horas.filter((hora) => {
-                  const fd = new Date(
-                    new Date(hora.fecha).toLocaleString("en-US", { timeZone: "America/Santiago" })
-                  );
+                  const fd = toSantiagoDate(hora.fecha);
                   return isSameDay(fd, day) && fd.getHours() === h && fd.getMinutes() === m;
                 });
 

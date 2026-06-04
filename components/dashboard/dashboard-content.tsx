@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { AlertCircle, Clock, TrendingUp, Users } from "lucide-react";
 import { useEffect } from "react";
 
+import { formatHoraSantiago } from "@/lib/utils/dates";
+import { estadoBadgeClass, estadoDotClass, ESTADO_LABELS } from "@/lib/utils/estados";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useDashboardStats } from "@/lib/hooks/useDashboardStats";
 import { DashboardSkeleton } from "./dashboard-skeleton";
@@ -15,40 +17,6 @@ function formatMonto(monto: number): string {
   return `$${monto.toLocaleString("es-CL")}`;
 }
 
-function estadoBadgeClass(estado: string) {
-  switch (estado) {
-    case "CONFIRMADA":
-      return "bg-green-100 text-green-800 ring-green-600/20 dark:bg-green-950/50 dark:text-green-300 dark:ring-green-500/30";
-    case "PENDIENTE":
-      return "bg-yellow-100 text-yellow-800 ring-yellow-600/20 dark:bg-yellow-950/50 dark:text-yellow-200 dark:ring-yellow-500/30";
-    case "CANCELADA":
-      return "bg-red-100 text-red-800 ring-red-600/20 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-500/30";
-    default:
-      return "bg-zinc-100 text-zinc-600 ring-zinc-500/10 dark:bg-zinc-800 dark:text-zinc-400";
-  }
-}
-
-function estadoDotClass(estado: string) {
-  switch (estado) {
-    case "CONFIRMADA": return "bg-green-500";
-    case "PENDIENTE": return "bg-yellow-500";
-    case "CANCELADA": return "bg-red-500";
-    default: return "bg-zinc-400";
-  }
-}
-
-const ESTADO_LABELS: Record<string, string> = {
-  PENDIENTE: "Pendiente",
-  CONFIRMADA: "Confirmada",
-  CANCELADA: "Cancelada",
-  COMPLETADA: "Completada",
-};
-
-function formatHoraSantiago(iso: string) {
-  const d = new Date(iso);
-  const s = new Date(d.toLocaleString("en-US", { timeZone: "America/Santiago" }));
-  return `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`;
-}
 
 export function DashboardContent() {
   const queryClient = useQueryClient();
@@ -177,10 +145,8 @@ export function DashboardContent() {
                         {hora.medico.usuario.nombre}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border border-current/20 px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${estadoBadgeClass(hora.estado)}`}
-                        >
-                          <span className={`h-1.5 w-1.5 rounded-full ${estadoDotClass(hora.estado)}`} />
+                        <span className={estadoBadgeClass(hora.estado)}>
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${estadoDotClass(hora.estado)}`} />
                           {ESTADO_LABELS[hora.estado] ?? hora.estado}
                         </span>
                       </td>

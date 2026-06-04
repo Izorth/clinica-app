@@ -30,6 +30,5 @@ export function useDashboardStats() {
       if (!res.ok) throw new Error("Error cargando estadísticas");
       return res.json() as Promise<DashboardStats>;
     },
-    refetchInterval: 30000,
   });
 }
