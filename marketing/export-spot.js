@@ -31,7 +31,7 @@ const fs = require('fs');
 const path = require('path');
 
 // ───── Config ───────────────────────────────────────────────────────────
-const SPOT_URL  = 'http://localhost:3000/spot.html'; // escenario compuesto (branding + captions + app real en iframe)
+const SPOT_URL  = 'http://localhost:3000/spot.html?auto=1'; // ?auto=1 = arranca solo y sin audio (ffmpeg mezcla voz+música)
 const LOGIN_URL = 'http://localhost:3000/login';
 const CREDENTIALS = {
   email:    process.env.SPOT_EMAIL    || 'admin@clinica.cl',

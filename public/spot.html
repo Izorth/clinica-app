@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ClinicApp · Spot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root{
     --g1:#4f86ff; --g2:#22d3ee;            /* gradiente de marca azul→cian */
@@ -39,7 +42,7 @@
   .wordmark .dot{color:var(--g2)}
   .tagline{margin-top:clamp(6px,1.2vh,12px);
     font-size:clamp(9px,1.15vw,13px);font-weight:600;
-    letter-spacing:.36em;text-transform:uppercase;color:rgba(255,255,255,.58);}
+    letter-spacing:.36em;text-transform:uppercase;color:rgba(255,255,255,.73);}
 
   /* Panel con la app */
   .panel-wrap{flex:1 1 auto;width:100%;display:flex;align-items:center;
@@ -50,17 +53,22 @@
   .panel.show{opacity:1;transform:none;}
   .scaler{position:absolute;top:0;left:0;width:var(--base-w);height:var(--base-h);
     transform-origin:top left;transform:scale(var(--s,1));}
-  iframe{width:var(--base-w);height:var(--base-h);border:0;background:#fff;display:block;}
+  .scaler iframe{position:absolute;top:0;left:0;width:var(--base-w);height:var(--base-h);
+    border:0;background:#fff;display:block;opacity:0;transition:opacity .55s ease;}
+  .scaler iframe.active{opacity:1;}
 
   /* Caption kinético */
   .caption{flex:0 0 auto;text-align:center;color:#fff;min-height:clamp(58px,16vh,150px);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(4px,1vh,10px);}
-  .cap-main{font-weight:800;letter-spacing:-0.02em;line-height:1.05;
-    font-size:clamp(28px,5.6vw,64px);text-shadow:0 2px 22px rgba(0,0,0,.4);}
+  /* Captions en Instrument Serif (display del DESIGN.md). Es un serif de alto
+     contraste pensado para usarse grande en su peso natural (400), no en bold. */
+  .cap-main{font-family:'Instrument Serif',Georgia,'Times New Roman',serif;
+    font-weight:400;letter-spacing:0;line-height:1.04;
+    font-size:clamp(36px,6.6vw,78px);text-shadow:0 2px 22px rgba(0,0,0,.4);}
   .cap-main .g{background:linear-gradient(90deg,var(--g1),var(--g2));
     -webkit-background-clip:text;background-clip:text;color:transparent;}
   .cap-sub{font-size:clamp(11px,1.5vw,18px);font-weight:600;letter-spacing:.28em;
-    text-transform:uppercase;color:rgba(255,255,255,.62);}
+    text-transform:uppercase;color:rgba(255,255,255,.74);}
   .anim{animation:rise .5s cubic-bezier(.2,.7,.2,1) both;}
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 
@@ -69,9 +77,35 @@
     background:linear-gradient(90deg,var(--g1),var(--g2));color:#fff;font-weight:700;
     font-size:clamp(14px,1.9vw,22px);padding:clamp(9px,1.4vh,15px) clamp(18px,2.4vw,30px);
     border-radius:9999px;box-shadow:0 10px 34px rgba(79,134,255,.45);}
+  .cta-handle{display:inline-flex;align-items:center;gap:8px;margin-top:clamp(8px,1.5vh,14px);
+    font-family:'DM Sans',system-ui,sans-serif;font-weight:600;letter-spacing:.02em;
+    font-size:clamp(13px,1.55vw,19px);color:rgba(255,255,255,.88);}
+  .cta-handle svg{width:1.15em;height:1.15em;opacity:.92;}
 
   /* Escena de título (intro / CTA): oculta el panel y centra el contenido */
   .stage.title .panel-wrap{display:none;}
+
+  /* Aviso de datos ficticios — visible solo en pantallas que muestran PII */
+  .demo-badge{position:fixed;left:clamp(10px,2vw,26px);top:clamp(12px,3vh,26px);z-index:40;
+    font-size:clamp(8px,0.95vw,12px);font-weight:600;letter-spacing:.06em;
+    color:rgba(255,255,255,.72);background:rgba(8,6,20,.42);
+    padding:5px 10px;border-radius:6px;backdrop-filter:blur(3px);
+    opacity:0;transition:opacity .4s ease;pointer-events:none;}
+  .demo-badge.show{opacity:1;}
+
+  /* Botón de reproducción — solo para preview en navegador (no aparece al grabar) */
+  .play{position:fixed;inset:0;z-index:50;display:none;cursor:pointer;
+    align-items:center;justify-content:center;flex-direction:column;gap:18px;
+    background:radial-gradient(60% 60% at 50% 45%, rgba(0,0,0,.25), rgba(8,6,20,.6));}
+  .play.show{display:flex;}
+  .play .disc{width:clamp(64px,8vw,96px);height:clamp(64px,8vw,96px);border-radius:50%;
+    background:linear-gradient(90deg,var(--g1),var(--g2));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 12px 40px rgba(79,134,255,.5);transition:transform .15s ease;}
+  .play:hover .disc{transform:scale(1.05);}
+  .play .disc svg{width:42%;height:42%;fill:#fff;margin-left:8%;}
+  .play .play-label{color:#fff;font-weight:700;letter-spacing:.04em;
+    font-size:clamp(14px,1.8vw,20px);text-shadow:0 2px 10px rgba(0,0,0,.45);}
   .stage.title{justify-content:center;gap:clamp(10px,2.4vh,22px);}
   .stage.title .header .wordmark{font-size:clamp(40px,8vw,96px);}
   .stage.title .header .tagline{font-size:clamp(11px,1.5vw,17px);}
@@ -87,48 +121,55 @@
     <div class="panel-wrap">
       <div class="panel" id="panel">
         <div class="scaler" id="scaler">
-          <iframe id="frame" src="about:blank" scrolling="no"></iframe>
+          <iframe id="fa" class="active" src="about:blank" scrolling="no"></iframe>
+          <iframe id="fb" src="about:blank" scrolling="no"></iframe>
         </div>
       </div>
     </div>
     <div class="caption" id="caption"></div>
   </div>
 
+  <!-- Preview en navegador: botón para reproducir con audio (autoplay con sonido
+       está bloqueado hasta que el usuario hace clic). Al grabar se usa ?auto=1. -->
+  <div class="play" id="play">
+    <div class="disc"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+    <div class="play-label">Reproducir spot</div>
+  </div>
+  <div class="demo-badge" id="demoBadge">Datos de demostración · pacientes ficticios</div>
+  <audio id="voz" src="/music/voz.mp3" preload="auto"></audio>
+  <audio id="bgm" src="/music/spot.mp3" preload="auto" loop></audio>
+
 <script>
 (function(){
   var ORIGIN = location.origin;            // mismo origen → iframe autenticado por cookie
-  var frame   = document.getElementById('frame');
+  var fa = document.getElementById('fa');
+  var fb = document.getElementById('fb');
+  var activeFrame = fa, backFrame = fb;    // doble buffer para crossfade
   var scaler  = document.getElementById('scaler');
   var panel   = document.getElementById('panel');
   var stage   = document.getElementById('stage');
   var header  = document.getElementById('header');
   var caption = document.getElementById('caption');
   var tagline = document.getElementById('tagline');
+  var demoBadge = document.getElementById('demoBadge');
 
   var BASE_W = 1280, BASE_H = 800;
 
   // ── Línea de tiempo de escenas (ms). Total ≈ 22.5s, alineado con la voz. ──
   var SCENES = [
-    { dur:2500, title:true,  tagline:'Tu clínica · en un solo lugar',
-      cap:'' },
-    { dur:3500, route:'/dashboard',
-      tagline:'Tu clínica · en un solo lugar',
+    { dur:1500, title:true, tagline:'Tu clínica · en un solo lugar', cap:'' },
+    { dur:1300, title:true, tagline:'Pacientes · Agenda · Ingresos', cap:'' },
+    { dur:3400, route:'/dashboard', tagline:'Tu clínica · en un solo lugar',
       cap:'Todo en <span class="g">tiempo real</span>' },
-    { dur:3500, route:'/dashboard/agenda',
-      tagline:'Agenda · siempre al día',
+    { dur:3400, route:'/dashboard/agenda', tagline:'Agenda · siempre al día',
       cap:'Una <span class="g">agenda viva</span>' },
-    { dur:3000, route:'/dashboard/pacientes',
-      tagline:'Pacientes · a un clic',
+    { dur:3000, route:'/dashboard/pacientes', tagline:'Pacientes · a un clic',
       cap:'Cualquier <span class="g">ficha</span><span class="cap-sub">en segundos</span>' },
-    { dur:4700, route:'/dashboard/pacientes/nuevo', type:true,
-      tagline:'Registro express',
+    { dur:4600, route:'/dashboard/pacientes/nuevo', type:true, tagline:'Registro express',
       cap:'Un nuevo <span class="g">paciente</span><span class="cap-sub">en menos de un minuto</span>' },
-    { dur:3000, route:'/dashboard',
-      tagline:'Ingresos · claros y al día',
+    { dur:3000, route:'/dashboard', tagline:'Ingresos · claros y al día',
       cap:'Tus <span class="g">ingresos</span><span class="cap-sub">claros, al día</span>' },
-    { dur:2300, title:true, cta:true,
-      tagline:'Tu clínica, en un solo lugar',
-      cap:'' },
+    { dur:2300, title:true, cta:true, tagline:'Tu clínica, en un solo lugar', cap:'' },
   ];
 
   // ── Escala del iframe para que el look desktop entre en el panel ──
@@ -145,11 +186,38 @@
   }
   window.addEventListener('resize', fit);
 
+  // ── Doble buffer: precarga la próxima pantalla en el iframe oculto y hace
+  // crossfade al entrar → transiciones suaves, sin recargas a la vista ni saltos.
+  function loadInto(frm, route){
+    return new Promise(function(res){
+      if(frm.getAttribute('data-route') === route){ res(); return; } // ya cargada
+      var done = false;
+      function ok(){ if(done) return; done = true; frm.removeEventListener('load', ok); res(); }
+      frm.addEventListener('load', ok);
+      frm.setAttribute('data-route', route);
+      frm.src = ORIGIN + route;
+      setTimeout(ok, 3000); // failsafe por si 'load' no dispara
+    });
+  }
+  function swapTo(route){
+    return loadInto(backFrame, route).then(function(){
+      fit();
+      backFrame.classList.add('active');     // crossfade (.55s)
+      activeFrame.classList.remove('active');
+      var t = activeFrame; activeFrame = backFrame; backFrame = t;
+    });
+  }
+  function preloadNextRoute(fromIdx){
+    for(var j = fromIdx + 1; j < SCENES.length; j++){
+      if(SCENES[j].route){ loadInto(backFrame, SCENES[j].route); break; }
+    }
+  }
+
   // ── Efecto de tipeo en el form de nuevo paciente (mismo origen) ──
-  function typeForm(){
+  function typeForm(frm){
     try{
-      var win = frame.contentWindow;
-      var doc = frame.contentDocument || win.document;
+      var win = frm.contentWindow;
+      var doc = frm.contentDocument || win.document;
       var nativeSetter = Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype, 'value').set;
       var fields = [
         ['input[name="rut"]',      '19.876.543-K'],
@@ -181,52 +249,97 @@
   }
 
   // ── Reproducción ──
-  function applyScene(s){
+  function applyScene(s, i){
     tagline.textContent = s.tagline || '';
     header.classList.add('show');
 
-    if(s.title){
-      stage.classList.add('title');
-      panel.classList.remove('show');
-    } else {
-      stage.classList.remove('title');
-      if(frame.getAttribute('data-route') !== s.route){
-        frame.setAttribute('data-route', s.route);
-        frame.src = ORIGIN + s.route;
-        frame.addEventListener('load', fit, { once:true });
-      }
-      requestAnimationFrame(fit);
-      panel.classList.add('show');
-      if(s.type) frame.addEventListener('load', typeForm, { once:true });
-    }
+    // Aviso de datos ficticios solo en pantallas que muestran PII de pacientes
+    var showDemo = !s.title && !!s.route && s.route.indexOf('pacientes') !== -1;
+    demoBadge.classList.toggle('show', showDemo);
 
     // Caption (con animación de entrada)
     var html = '';
     if(s.cap)  html += '<div class="cap-main anim">' + s.cap + '</div>';
-    if(s.cta)  html += '<div class="cta-pill anim">Solicita una demo →</div>';
+    if(s.cta){
+      html += '<div class="cta-pill anim">Solicita una demo →</div>';
+      html += '<div class="cta-handle anim">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">'
+        + '<rect x="2" y="2" width="20" height="20" rx="5.5"/>'
+        + '<circle cx="12" cy="12" r="4.2"/>'
+        + '<circle cx="17.6" cy="6.4" r="1.1" fill="currentColor" stroke="none"/></svg>'
+        + '@delthasolutions</div>';
+    }
     caption.innerHTML = html;
+
+    if(s.title){
+      stage.classList.add('title');
+      panel.classList.remove('show');
+      return;
+    }
+
+    stage.classList.remove('title');
+    panel.classList.add('show');
+    requestAnimationFrame(fit);
+    swapTo(s.route).then(function(){
+      if(s.type) typeForm(activeFrame);
+      preloadNextRoute(i);          // adelanta la siguiente pantalla al buffer oculto
+    });
   }
 
-  function start(){
+  var voz = document.getElementById('voz');
+  var bgm = document.getElementById('bgm');
+  var playBtn = document.getElementById('play');
+  var playLabel = playBtn.querySelector('.play-label');
+  var running = false;
+
+  function runTimeline(){
     window.__spotStarted = true;   // señal para que el grabador sincronice la captura
-    // Preload del dashboard durante la intro para que la escena 2 sea instantánea
-    frame.setAttribute('data-route','/dashboard');
-    frame.src = ORIGIN + '/dashboard';
-    frame.addEventListener('load', fit, { once:true });
+    loadInto(backFrame, '/dashboard'); // precarga la 1ª pantalla durante la intro
 
     var i = 0;
     function run(){
-      if(i >= SCENES.length) return;
-      applyScene(SCENES[i]);
+      if(i >= SCENES.length){ onEnd(); return; }
+      applyScene(SCENES[i], i);
       var d = SCENES[i].dur; i++;
       setTimeout(run, d);
     }
     run();
   }
 
+  function startSpot(withAudio){
+    if(running) return;
+    running = true;
+    playBtn.classList.remove('show');
+    if(withAudio){
+      try{
+        bgm.volume = 0.22; bgm.currentTime = 0; voz.currentTime = 0;
+        bgm.play(); voz.play();
+      }catch(e){ /* sin audio si el navegador lo bloquea */ }
+    }
+    runTimeline();
+  }
+
+  function onEnd(){
+    running = false;
+    try{ voz.pause(); bgm.pause(); }catch(e){}
+    // En preview, permitir repetir
+    if(!/[?&#]auto/.test(location.search + location.hash)){
+      playLabel.textContent = 'Repetir spot';
+      playBtn.classList.add('show');
+    }
+  }
+
+  function init(){
+    var auto = /[?&#]auto/.test(location.search + location.hash);
+    if(auto){ startSpot(false); }      // grabación (puppeteer): audio lo agrega ffmpeg
+    else { playBtn.classList.add('show'); }  // preview: esperar clic del usuario
+  }
+
+  playBtn.addEventListener('click', function(){ startSpot(true); });
+
   // Espera a fuentes para evitar saltos tipográficos
-  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); }
-  else { window.addEventListener('load', start); }
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(init); }
+  else { window.addEventListener('load', init); }
 })();
 </script>
 </body>
