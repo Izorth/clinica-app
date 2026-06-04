@@ -49,7 +49,8 @@ function periodoLabel(vista: Vista, fechaBase: Date): string {
     const b = domingo.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
     return `${a} – ${b}`;
   }
-  return fechaBase.toLocaleDateString("es-CL", { month: "long", year: "numeric" });
+  const raw = fechaBase.toLocaleDateString("es-CL", { month: "long", year: "numeric" });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 export function AgendaContent() {
@@ -207,7 +208,7 @@ export function AgendaContent() {
           >
             ›
           </button>
-          <span className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {periodoLabel(vista, fechaBase)}
           </span>
           {isFetching && (
