@@ -76,18 +76,35 @@ model Ficha {
 }
 
 model Pago {
-  id         String     @id @default(cuid())
-  horaId     String     @unique
-  hora       Hora       @relation(fields: [horaId], references: [id])
-  pacienteId String
-  paciente   Paciente   @relation(fields: [pacienteId], references: [id])
-  monto      Int
-  estado     EstadoPago @default(PENDIENTE)
-  creadoEn   DateTime   @default(now())
+  id            String     @id @default(cuid())
+  horaId        String     @unique
+  hora          Hora       @relation(fields: [horaId], references: [id])
+  pacienteId    String
+  paciente      Paciente   @relation(fields: [pacienteId], references: [id])
+  monto         Int
+  estado        EstadoPago @default(PENDIENTE)
+  medioPago     MedioPago  @default(EFECTIVO)
+  // Flow.cl
+  flowToken     String?
+  flowOrderId   String?
+  flowPaymentId Int?
+  // Bsale boleta electrónica
+  boletoId      Int?
+  boletoNumero  Int?
+  boletoUrl     String?
+  boletoEstado  String?
+  creadoEn      DateTime   @default(now())
 }
 
 enum EstadoPago {
   PENDIENTE
   PAGADO
   FALLIDO
+}
+
+enum MedioPago {
+  EFECTIVO
+  TRANSFERENCIA
+  FLOW
+  WEBPAY
 }

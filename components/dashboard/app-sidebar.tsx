@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, Calendar, Users, Stethoscope, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, LogOut, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -40,6 +40,14 @@ const navItems = [
     exact: false,
     queryKey: ["medicos"] as string[],
     apiPath: "/api/medicos",
+  },
+  {
+    label: "Pagos",
+    href: "/dashboard/pagos",
+    icon: CreditCard,
+    exact: false,
+    queryKey: ["pagos"] as string[],
+    apiPath: "/api/pagos",
   },
 ] as const;
 

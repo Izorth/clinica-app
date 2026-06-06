@@ -8,3 +8,14 @@ export const horaInclude = {
     select: { id: true, nombre: true, apellido: true, rut: true, telefono: true },
   },
 } as const;
+
+export const pagoInclude = {
+  paciente: {
+    select: { id: true, nombre: true, apellido: true, rut: true, email: true },
+  },
+  hora: {
+    include: {
+      medico: { include: { usuario: { select: { nombre: true } } } },
+    },
+  },
+} as const;

@@ -38,3 +38,40 @@ export function estadoDotClass(estado: string): string {
     default:           return "bg-stone-400";
   }
 }
+
+// ── EstadoPago ──────────────────────────────────────────────────────────────
+
+export type EstadoPago = "PENDIENTE" | "PAGADO" | "FALLIDO";
+export type MedioPago  = "EFECTIVO" | "TRANSFERENCIA" | "FLOW" | "WEBPAY";
+
+export const ESTADO_PAGO_LABELS: Record<EstadoPago, string> = {
+  PENDIENTE: "Pendiente",
+  PAGADO:    "Pagado",
+  FALLIDO:   "Fallido",
+};
+
+export const MEDIO_PAGO_LABELS: Record<MedioPago, string> = {
+  EFECTIVO:      "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  FLOW:          "Flow",
+  WEBPAY:        "Webpay",
+};
+
+export function estadoPagoBadgeClass(estado: EstadoPago): string {
+  switch (estado) {
+    case "PAGADO":
+      return "inline-flex items-center gap-1.5 rounded-full border-l-2 border-emerald-500 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300";
+    case "PENDIENTE":
+      return "inline-flex items-center gap-1.5 rounded-full border-l-2 border-amber-400 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-amber-800 dark:bg-amber-950/30 dark:text-amber-200";
+    case "FALLIDO":
+      return "inline-flex items-center gap-1.5 rounded-full border-l-2 border-red-500 bg-red-50 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-red-800 dark:bg-red-950/30 dark:text-red-300";
+  }
+}
+
+export function estadoPagoDotClass(estado: EstadoPago): string {
+  switch (estado) {
+    case "PAGADO":   return "bg-emerald-500";
+    case "PENDIENTE": return "bg-amber-400";
+    case "FALLIDO":  return "bg-red-500";
+  }
+}
