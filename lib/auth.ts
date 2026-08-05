@@ -27,9 +27,15 @@ export const authOptions: NextAuthOptions = {
 
         const usuario = await prisma.usuario.findUnique({
           where: { email },
+          omit: { password: false },
         });
         if (!usuario) {
           return null;
+        }
+        if (!usuario.password) {
+          throw new Error(
+            "usuario.password no llegó desde Prisma (¿se agregó un omit/select que lo excluye?)"
+          );
         }
 
         const valid = await bcrypt.compare(password, usuario.password);
