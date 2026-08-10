@@ -19,7 +19,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run seed` — seed the database via `scripts/seed.ts` (ts-node, loads `.env`)
 - Prisma: `npx prisma generate` after schema changes, `npx prisma migrate dev` for new migrations
 
-Package manager: both `package-lock.json` and `pnpm-lock.yaml` are present (pnpm workspace configured via `pnpm-workspace.yaml`) — check which one is in active use before adding dependencies rather than assuming.
+**Package manager: pnpm.** Use `pnpm add` / `pnpm add -D` to change dependencies — never `npm install`, which would recreate `package-lock.json` and make the build's package-manager detection ambiguous. `package-lock.json` was a leftover from `create-next-app`, stale since 2026-06-03, and was deleted on 2026-08-10; `pnpm-lock.yaml` is the only lockfile.
+
+`pnpm-workspace.yaml` is not about workspaces here — it carries the `allowBuilds` allowlist of packages permitted to run install scripts (prisma, sharp, puppeteer…). A new dependency that needs a postinstall must be added there or its script is silently skipped.
+
+Running scripts through npm (`npm run test`, `npm run build`) is harmless — npm is only a task runner there and never touches the lockfile. The rule applies to installing dependencies, not to running scripts.
 
 ## Architecture
 

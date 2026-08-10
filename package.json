@@ -43,6 +43,7 @@
     "dotenv": "^16.4.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "playwright": "^1.62.1",
     "prisma": "^6.19.3",
     "puppeteer": "^25.0.4",
     "tailwindcss": "^4",
