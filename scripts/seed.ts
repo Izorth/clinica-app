@@ -9,7 +9,35 @@ const {
   EstadoPago,
 } = require("@prisma/client") as typeof import("@prisma/client");
 
+const { validarRut } = require("../lib/utils/rut") as typeof import("../lib/utils/rut");
+
 const prisma = new PrismaClient();
+
+// ─── Pacientes de demostración ─────────────────────────────────────────────
+// Datos ficticios para demos y para el video de marketing. Dos reglas:
+//
+// 1. Los apellidos son poco frecuentes, elegidos para que no evoquen a nadie en
+//    particular. No están verificados contra ningún registro civil: es
+//    perfectamente posible que existan personas con estos apellidos.
+// 2. TODOS los RUT tienen dígito verificador inválido a propósito, para que no
+//    puedan coincidir con el RUT de una persona real. Lo verifica el guard de
+//    abajo en cada corrida. La app rechaza estos RUT si se tipean en el
+//    formulario — es intencional: el seed escribe con Prisma directo, saltándose
+//    la validación del handler.
+const pacientesData = [
+  { rut: "13.847.265-6", nombre: "Renata",   apellido: "Olmedilla",  telefono: "+56920000000", email: "renata.olmedilla@ejemplo.cl" },
+  { rut: "17.293.846-0", nombre: "Bruno",    apellido: "Cerezuela",  telefono: "+56921111111", email: "bruno.cerezuela@ejemplo.cl" },
+  { rut: "15.628.394-1", nombre: "Ignacia",  apellido: "Fresnedo",   telefono: "+56922222222", email: "ignacia.fresnedo@ejemplo.cl" },
+  { rut: "19.472.638-5", nombre: "Teodoro",  apellido: "Almendral",  telefono: "+56923333333", email: "teodoro.almendral@ejemplo.cl" },
+  { rut: "14.385.927-5", nombre: "Javiera",  apellido: "Nevares",    telefono: "+56924444444", email: "javiera.nevares@ejemplo.cl" },
+  { rut: "18.264.739-1", nombre: "Emilio",   apellido: "Jarandilla", telefono: "+56925555555", email: "emilio.jarandilla@ejemplo.cl" },
+  { rut: "16.739.482-6", nombre: "Amparo",   apellido: "Higueral",   telefono: "+56926666666", email: "amparo.higueral@ejemplo.cl" },
+  { rut: "12.958.374-7", nombre: "Nicolás",  apellido: "Endrino",    telefono: "+56927777777", email: "nicolas.endrino@ejemplo.cl" },
+  { rut: "20.174.853-5", nombre: "Rocío",    apellido: "Pedregal",   telefono: "+56928888888", email: "rocio.pedregal@ejemplo.cl" },
+  { rut: "11.539.286-8", nombre: "Gaspar",   apellido: "Lomeña",     telefono: "+56929999999", email: "gaspar.lomena@ejemplo.cl" },
+  { rut: "17.846.291-2", nombre: "Marisol",  apellido: "Bracamonte", telefono: "+56931111110", email: "marisol.bracamonte@ejemplo.cl" },
+  { rut: "15.294.867-1", nombre: "Damián",   apellido: "Valdenegro", telefono: "+56932222221", email: "damian.valdenegro@ejemplo.cl" },
+];
 
 // Helper: construye una fecha relativa al "hoy" del servidor
 function fecha(offsetDias: number, hora: number, minutos = 0) {
@@ -20,35 +48,31 @@ function fecha(offsetDias: number, hora: number, minutos = 0) {
 }
 
 async function main() {
+  // Guard: ningún RUT del seed puede tener DV válido. Si alguien edita la lista
+  // de arriba y le acierta al dígito verificador sin querer, el seed no corre.
+  const validos = pacientesData.filter((p) => validarRut(p.rut));
+  if (validos.length > 0) {
+    throw new Error(
+      `Estos RUT del seed tienen DV VÁLIDO y podrían pertenecer a alguien real: ` +
+        `${validos.map((p) => p.rut).join(", ")}. Cámbialos antes de sembrar.`
+    );
+  }
+
   const passwordHash = bcrypt.hashSync("admin123", 10);
 
-  // ─── Limpieza: pacientes basura sembrados a mano durante pruebas ─────────
-  // Solo borra los RUT que claramente no son del seed oficial.
-  await prisma.hora.deleteMany({
-    where: {
-      paciente: {
-        rut: { in: ["123123123", "18586295k", "asdasd"] },
-      },
-    },
+  // ─── Limpieza: todo paciente que no sea del seed ─────────────────────────
+  // Incluye los pacientes de seeds anteriores (que tenían otros RUT y nombres
+  // realistas), la basura tecleada a mano y los que se crean al grabar el video.
+  // Acotado a tablas de la clínica: esta base la comparte otro proyecto.
+  const rutsDelSeed = pacientesData.map((p) => p.rut);
+  const ajenos = { paciente: { rut: { notIn: rutsDelSeed } } };
+  await prisma.pago.deleteMany({ where: ajenos });
+  await prisma.ficha.deleteMany({ where: ajenos });
+  await prisma.hora.deleteMany({ where: ajenos });
+  const borrados = await prisma.paciente.deleteMany({
+    where: { rut: { notIn: rutsDelSeed } },
   });
-  await prisma.pago.deleteMany({
-    where: {
-      paciente: {
-        rut: { in: ["123123123", "18586295k", "asdasd"] },
-      },
-    },
-  });
-  await prisma.ficha.deleteMany({
-    where: {
-      paciente: {
-        rut: { in: ["123123123", "18586295k", "asdasd"] },
-      },
-    },
-  });
-  await prisma.paciente.deleteMany({
-    where: { rut: { in: ["123123123", "18586295k", "asdasd"] } },
-  });
-  console.log("✓ Limpieza de registros basura");
+  console.log(`✓ Limpieza: ${borrados.count} pacientes ajenos al seed borrados`);
 
   // ─── Admin ───────────────────────────────────────────────────────────────
   await prisma.usuario.upsert({
@@ -94,21 +118,6 @@ async function main() {
   }
 
   // ─── Pacientes ───────────────────────────────────────────────────────────
-  const pacientesData = [
-    { rut: "12.345.678-9", nombre: "María",      apellido: "López",     telefono: "+56912345678", email: "maria.lopez@email.cl" },
-    { rut: "9.876.543-2",  nombre: "Juan",       apellido: "Pérez",     telefono: "+56987654321", email: "juan.perez@email.cl" },
-    { rut: "15.432.198-7", nombre: "Sofía",      apellido: "Ramírez",   telefono: "+56911223344", email: "sofia.ramirez@email.cl" },
-    { rut: "16.234.567-K", nombre: "Carolina",   apellido: "Soto",      telefono: "+56922334455", email: "carolina.soto@email.cl" },
-    { rut: "14.567.890-1", nombre: "José",       apellido: "Muñoz",     telefono: "+56933445566", email: "jose.munoz@email.cl" },
-    { rut: "17.891.234-5", nombre: "Camila",     apellido: "Rojas",     telefono: "+56944556677", email: "camila.rojas@email.cl" },
-    { rut: "13.456.789-0", nombre: "Felipe",     apellido: "Tapia",     telefono: "+56955667788", email: "felipe.tapia@email.cl" },
-    { rut: "18.234.567-8", nombre: "Valentina",  apellido: "Silva",     telefono: "+56966778899", email: "valentina.silva@email.cl" },
-    { rut: "11.876.543-4", nombre: "Diego",      apellido: "Vargas",    telefono: "+56977889900", email: "diego.vargas@email.cl" },
-    { rut: "19.345.678-2", nombre: "Constanza",  apellido: "Fuentes",   telefono: "+56988990011", email: "constanza.fuentes@email.cl" },
-    { rut: "15.987.654-3", nombre: "Matías",     apellido: "Contreras", telefono: "+56999001122", email: "matias.contreras@email.cl" },
-    { rut: "16.789.012-6", nombre: "Antonia",    apellido: "Herrera",   telefono: "+56912340987", email: "antonia.herrera@email.cl" },
-  ];
-
   const pacientes: { id: string; nombre: string; apellido: string }[] = [];
   for (const p of pacientesData) {
     const paciente = await prisma.paciente.upsert({
