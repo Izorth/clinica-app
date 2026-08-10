@@ -35,7 +35,7 @@ export default async function MedicoDetallePage(props: {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard/medicos"
-          className="inline-flex items-center rounded-[6px] border border-[--color-border-stone] bg-white px-3 py-1.5 text-[13px] font-medium text-[--color-text-muted] transition-colors hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
+          className="inline-flex items-center rounded-[6px] border border-[var(--color-border-stone)] bg-white px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-muted)] transition-colors hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
         >
           ← Volver a médicos
         </Link>

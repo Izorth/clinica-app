@@ -10,7 +10,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-[--color-bg] dark:bg-stone-950">
+    <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] dark:bg-stone-950">
       <AppSidebar user={user} />
       <div className="flex flex-1 flex-col overflow-y-auto">
         {children}

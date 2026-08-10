@@ -41,18 +41,18 @@ function LoginForm() {
   );
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-[--color-bg] px-4 py-16 dark:bg-stone-950">
-      <div className="w-full max-w-sm rounded-lg border border-[--color-border-stone] bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-        <h1 className="text-[18px] font-semibold tracking-tight text-[--color-text] dark:text-stone-50">
+    <div className="flex flex-1 items-center justify-center bg-[var(--color-bg)] px-4 py-16 dark:bg-stone-950">
+      <div className="w-full max-w-sm rounded-lg border border-[var(--color-border-stone)] bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+        <h1 className="text-[18px] font-semibold tracking-tight text-[var(--color-text)] dark:text-stone-50">
           Iniciar sesión
         </h1>
-        <p className="mt-1.5 text-[13px] text-[--color-text-muted]">
+        <p className="mt-1.5 text-[13px] text-[var(--color-text-muted)]">
           Usa tu correo y contraseña institucional.
         </p>
 
         <form onSubmit={onSubmit} className="mt-7 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-semibold uppercase tracking-wide text-[--color-text-muted]">
+            <span className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               Email
             </span>
             <input
@@ -62,12 +62,12 @@ function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-[6px] border border-[--color-border-strong] bg-white px-3 py-2 text-[14px] text-[--color-text] outline-none transition-shadow focus:border-[--color-brand] focus:ring-3 focus:ring-[--color-brand-subtle] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
+              className="rounded-[6px] border border-[var(--color-border-strong)] bg-white px-3 py-2 text-[14px] text-[var(--color-text)] outline-none transition-shadow focus:border-[var(--color-brand)] focus:ring-3 focus:ring-[var(--color-brand-subtle)] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-semibold uppercase tracking-wide text-[--color-text-muted]">
+            <span className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               Contraseña
             </span>
             <input
@@ -77,7 +77,7 @@ function LoginForm() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-[6px] border border-[--color-border-strong] bg-white px-3 py-2 text-[14px] text-[--color-text] outline-none transition-shadow focus:border-[--color-brand] focus:ring-3 focus:ring-[--color-brand-subtle] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
+              className="rounded-[6px] border border-[var(--color-border-strong)] bg-white px-3 py-2 text-[14px] text-[var(--color-text)] outline-none transition-shadow focus:border-[var(--color-brand)] focus:ring-3 focus:ring-[var(--color-brand-subtle)] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
             />
           </label>
 
@@ -90,7 +90,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 flex h-9 items-center justify-center rounded-[6px] bg-[--color-brand] text-[13px] font-medium text-white transition-colors hover:bg-[--color-brand-hover] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-1 flex h-9 items-center justify-center rounded-[6px] bg-[var(--color-brand)] text-[13px] font-medium text-white transition-colors hover:bg-[var(--color-brand-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Entrando…" : "Entrar"}
           </button>

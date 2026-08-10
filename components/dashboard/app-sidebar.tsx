@@ -59,17 +59,17 @@ export function AppSidebar({ user }: { user: User }) {
   }
 
   return (
-    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-[--color-border-stone] bg-white dark:border-stone-800 dark:bg-stone-900">
+    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--color-border-stone)] bg-white dark:border-stone-800 dark:bg-stone-900">
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 pb-6 pt-5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] bg-[--color-text]">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-text)]">
           <Stethoscope className="h-3.5 w-3.5 text-white dark:text-stone-900" />
         </div>
         <div>
-          <p className="text-[13px] font-semibold leading-tight text-[--color-text]">
+          <p className="text-[13px] font-semibold leading-tight text-[var(--color-text)]">
             Clínica
           </p>
-          <p className="text-[11px] text-[--color-text-subtle]">Panel de gestión</p>
+          <p className="text-[11px] text-[var(--color-text-subtle)]">Panel de gestión</p>
         </div>
       </div>
 
@@ -90,8 +90,8 @@ export function AppSidebar({ user }: { user: User }) {
               className={[
                 "flex items-center gap-2.5 rounded-[6px] px-3 py-[7px] text-[13px] font-medium transition-colors",
                 isActive
-                  ? "bg-[--color-brand-subtle] text-[--color-brand]"
-                  : "text-[--color-text-muted] hover:bg-stone-50 hover:text-[--color-text] dark:hover:bg-stone-800 dark:hover:text-stone-100",
+                  ? "bg-[var(--color-brand-subtle)] text-[var(--color-brand)]"
+                  : "text-[var(--color-text-muted)] hover:bg-stone-50 hover:text-[var(--color-text)] dark:hover:bg-stone-800 dark:hover:text-stone-100",
               ].join(" ")}
             >
               <Icon
@@ -104,20 +104,20 @@ export function AppSidebar({ user }: { user: User }) {
       </nav>
 
       {/* User + sign-out */}
-      <div className="border-t border-[--color-border-stone] px-4 py-3 dark:border-stone-800">
+      <div className="border-t border-[var(--color-border-stone)] px-4 py-3 dark:border-stone-800">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[--color-brand-subtle] text-[11px] font-bold text-[--color-brand]">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-subtle)] text-[11px] font-bold text-[var(--color-brand)]">
             {user.initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-[--color-text]">{user.nombre}</p>
-            <p className="truncate text-[11px] text-[--color-text-subtle]">{user.rol}</p>
+            <p className="truncate text-[13px] font-medium text-[var(--color-text)]">{user.nombre}</p>
+            <p className="truncate text-[11px] text-[var(--color-text-subtle)]">{user.rol}</p>
           </div>
           <button
             type="button"
             title="Cerrar sesión"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="shrink-0 rounded-[4px] p-1 text-[--color-text-muted] transition-colors hover:bg-stone-100 hover:text-[--color-text] dark:hover:bg-stone-800"
+            className="shrink-0 rounded-[4px] p-1 text-[var(--color-text-muted)] transition-colors hover:bg-stone-100 hover:text-[var(--color-text)] dark:hover:bg-stone-800"
           >
             <LogOut className="h-3.5 w-3.5" />
           </button>
