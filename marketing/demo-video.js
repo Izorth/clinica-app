@@ -5,7 +5,7 @@
  *   npm run build && npm run start
  *   node marketing/demo-video.js
  *
- * Produce marketing/output/_raw.webm + marketing/output/marcas.json
+ * Produce marketing/output/_raw-<W>x<H>.webm + marcas-<W>x<H>.json
  * (las marcas de tiempo que usa post-video.sh para colocar los overlays).
  *
  * Se graba contra el build de producción a propósito: en `next dev` salen el
@@ -30,6 +30,13 @@ const NUEVO = {
   email: "amanda.sobrevilla@ejemplo.cl",
   fechaNac: "1991-03-14",
 };
+
+// Viewport de grabación. El 16:9 se graba a 1920x1080; para el 1:1 se usa
+// 1200x900, porque escalar una UI de 1920 de ancho a un cuadro de 1080 deja
+// las tablas en ~8px, ilegibles en un feed de celular. A 1200 la app reordena
+// más compacta y el texto sobrevive al escalado.
+const W = Number(process.env.DEMO_W || 1920);
+const H = Number(process.env.DEMO_H || 1080);
 
 // Multiplicador global de pausas: subir si el video queda corto.
 const PACE = Number(process.env.DEMO_PACE || 1);
@@ -56,12 +63,12 @@ async function main() {
 
   const browser = await chromium.launch();
   const context = await browser.newContext({
-    viewport: { width: 1920, height: 1080 },
+    viewport: { width: W, height: H },
     // Sin `size` el video se escalaría para caber en 800x800.
     // Sin `showActions`: el cursor nativo de Playwright viene acompañado de una
     // caja azul de resaltado y un punto rojo sobre cada elemento, que se ven a
     // herramienta de depuración. Acá se inyecta un cursor propio (ver abajo).
-    recordVideo: { dir: OUT, size: { width: 1920, height: 1080 } },
+    recordVideo: { dir: OUT, size: { width: W, height: H } },
     locale: "es-CL",
     timezoneId: "America/Santiago",
     deviceScaleFactor: 1,
@@ -117,7 +124,7 @@ async function main() {
 
   // Posición del puntero: hay que recordarla para poder reponer el cursor
   // después de cada navegación (el elemento se recrea y no hay mousemove).
-  const raton = { x: 960, y: 540 };
+  const raton = { x: Math.round(W / 2), y: Math.round(H / 2) };
   async function mover(x, y, steps = 24) {
     await page.mouse.move(x, y, { steps });
     raton.x = x;
@@ -239,12 +246,12 @@ async function main() {
   await browser.close();
 
   const crudo = await video.path();
-  const destino = path.join(OUT, "_raw.webm");
+  const destino = path.join(OUT, `_raw-${W}x${H}.webm`);
   fs.renameSync(crudo, destino);
-  fs.writeFileSync(path.join(OUT, "marcas.json"), JSON.stringify(marcas, null, 2));
+  fs.writeFileSync(path.join(OUT, `marcas-${W}x${H}.json`), JSON.stringify(marcas, null, 2));
 
   console.log(`\n✓ ${destino}`);
-  console.log(`✓ marcas.json`);
+  console.log(`✓ marcas-${W}x${H}.json`);
   console.log(`  duración grabada: ${marcas.fin}s | tras recortar login: ~${(marcas.fin - marcas.dashboard).toFixed(1)}s`);
 }
 
