@@ -42,3 +42,7 @@ next-env.d.ts
 
 /app/generated/prisma
 .gstack/
+
+# planning docs with vulnerability/infra detail — repo is public, these are not
+docs/clinica-app-plan-maestro.md
+*Zone.Identifier

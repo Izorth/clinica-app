@@ -49,6 +49,21 @@ describe("no-password-leak (solo lectura, DB real, sesión ADMIN mockeada)", () 
     pacienteConHorasId = paciente.id;
   });
 
+  it("prisma.usuario.findFirst() sin select/omit por consulta: password viene undefined (omit global)", async () => {
+    const usuario = await prisma.usuario.findFirst();
+    if (!usuario) {
+      throw new Error(
+        "No hay usuarios en la DB apuntada por DATABASE_URL — corre `npm run seed` antes de este test."
+      );
+    }
+    expect(usuario.email).toEqual(expect.any(String));
+    // @ts-expect-error el tipo generado ya no incluye password gracias al omit global;
+    // si alguien quita `omit: { usuario: { password: true } }` de lib/prisma.ts, este
+    // assert falla en runtime (y el @ts-expect-error de arriba deja de ser necesario,
+    // lo que también rompe el `npm run test` vía tsc si está en el pipeline de tipos).
+    expect(usuario.password).toBeUndefined();
+  });
+
   it("GET /api/medicos: hay médicos reales y ninguno expone password", async () => {
     const res = await getMedicos();
     const text = await res.text();
