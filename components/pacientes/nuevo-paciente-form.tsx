@@ -3,6 +3,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { validarRut } from "@/lib/utils/rut";
 
 type PacienteInput = {
   rut: string;
@@ -16,6 +19,7 @@ type PacienteInput = {
 export function NuevoPacienteForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [rutError, setRutError] = useState<string | null>(null);
 
   const createPaciente = useMutation({
     mutationFn: async (data: PacienteInput) => {
@@ -39,8 +43,16 @@ export function NuevoPacienteForm() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+
+    const rut = (form.elements.namedItem("rut") as HTMLInputElement).value.trim();
+    if (!validarRut(rut)) {
+      setRutError("El RUT no es válido: revisa el dígito verificador.");
+      return;
+    }
+    setRutError(null);
+
     createPaciente.mutate({
-      rut: (form.elements.namedItem("rut") as HTMLInputElement).value.trim(),
+      rut,
       nombre: (form.elements.namedItem("nombre") as HTMLInputElement).value.trim(),
       apellido: (form.elements.namedItem("apellido") as HTMLInputElement).value.trim(),
       telefono: (form.elements.namedItem("telefono") as HTMLInputElement).value.trim(),
@@ -59,9 +71,9 @@ export function NuevoPacienteForm() {
         Completa los datos del paciente. Los campos marcados con * son obligatorios.
       </p>
 
-      {createPaciente.isError && (
+      {(rutError || createPaciente.isError) && (
         <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
-          {createPaciente.error.message}
+          {rutError ?? createPaciente.error?.message}
         </p>
       )}
 
@@ -71,7 +83,7 @@ export function NuevoPacienteForm() {
             <span className="text-sm font-medium">
               RUT <span className="text-red-600">*</span>
             </span>
-            <input name="rut" type="text" placeholder="12.345.678-9" required className={inputClass} />
+            <input name="rut" type="text" placeholder="12.345.678-5" required className={inputClass} />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-medium">

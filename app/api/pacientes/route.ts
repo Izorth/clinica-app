@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { requireAuth, requireRole } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { formatearRut, validarRut } from "@/lib/utils/rut";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,18 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Faltan campos obligatorios" }, { status: 400 });
   }
 
+  if (!validarRut(rut)) {
+    return Response.json(
+      { error: "El RUT no es válido: el dígito verificador no corresponde" },
+      { status: 400 }
+    );
+  }
+
   try {
     const paciente = await prisma.paciente.create({
       data: {
-        rut,
+        // Se guarda canónico para que el mismo RUT no cree dos fichas.
+        rut: formatearRut(rut),
         nombre,
         apellido,
         telefono,
