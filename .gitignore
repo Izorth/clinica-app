@@ -46,3 +46,6 @@ next-env.d.ts
 # planning docs with vulnerability/infra detail — repo is public, these are not
 docs/clinica-app-plan-maestro.md
 *Zone.Identifier
+
+# videos de marketing: se regeneran con el script, no se versionan
+marketing/output/
