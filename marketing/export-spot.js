@@ -31,7 +31,12 @@ const fs = require('fs');
 const path = require('path');
 
 // ───── Config ───────────────────────────────────────────────────────────
-const SPOT_URL  = 'http://localhost:3000/spot.html?auto=1'; // ?auto=1 = arranca solo y sin audio (ffmpeg mezcla voz+música)
+// Sin ?auto=1 a propósito: con auto, spot.html arranca su línea de tiempo al
+// cargar, pero page.goto() no vuelve hasta 'networkidle0' — que espera a que el
+// iframe con la app real termine de cargar contra la base. Esos segundos se
+// comían las primeras escenas. Ahora la página queda esperando el botón de
+// reproducción y lo disparamos nosotros, justo antes de capturar.
+const SPOT_URL  = 'http://localhost:3000/spot.html';
 const LOGIN_URL = 'http://localhost:3000/login';
 const CREDENTIALS = {
   email:    process.env.SPOT_EMAIL    || 'admin@clinica.cl',
@@ -53,7 +58,7 @@ const BGM         = path.join(PROJECT_DIR, 'public', 'music', 'spot.mp3');
 // verticales no se vean borrosos al escalar al output final.
 const FORMATS = [
   { name: '16x9', captureWidth: 1920, captureHeight: 1080, outputWidth: 1920, outputHeight: 1080, dsf: 1 },
-  { name: '9x16', captureWidth: 390,  captureHeight: 844,  outputWidth: 1080, outputHeight: 1920, dsf: 3 },
+  { name: '9x16', captureWidth: 540,  captureHeight: 960,  outputWidth: 1080, outputHeight: 1920, dsf: 2 },
   { name: '1x1',  captureWidth: 600,  captureHeight: 600,  outputWidth: 1080, outputHeight: 1080, dsf: 2 },
 ];
 
@@ -143,20 +148,38 @@ async function renderFormat(fmt, browser) {
   const frameIntervalMs = 1000 / CAPTURE_FPS;
   let frameIdx = 0;
 
+  // La línea de tiempo de spot.html corre en tiempo real (setTimeout), así que
+  // la captura tiene que ir a la par o el spot se adelanta y el resto del video
+  // queda congelado en el CTA. En PNG cada frame a 1920x1080 cuesta ~400ms
+  // (6x el presupuesto de 66ms a 15fps); en JPEG cuesta ~50ms y entra. El
+  // frame se re-codifica igual a H.264, así que la pérdida es despreciable.
   async function captureFrames(durationMs, label) {
     const count = Math.ceil(durationMs / frameIntervalMs);
     process.stdout.write(`  ${label}: `);
+    let atrasados = 0;
     for (let i = 0; i < count; i++) {
-      const framePath = path.join(frameDir, `frame_${String(frameIdx).padStart(6, '0')}.png`);
-      await page.screenshot({ path: framePath, type: 'png' });
+      const t0 = Date.now();
+      const framePath = path.join(frameDir, `frame_${String(frameIdx).padStart(6, '0')}.jpg`);
+      await page.screenshot({ path: framePath, type: 'jpeg', quality: 88, optimizeForSpeed: true, captureBeyondViewport: false });
       frameIdx++;
       if (i % 10 === 0) process.stdout.write('.');
-      await sleep(frameIntervalMs);
+      const resto = frameIntervalMs - (Date.now() - t0);
+      if (resto > 0) await sleep(resto);
+      else atrasados++;
     }
     process.stdout.write(` ${count}f\n`);
+    if (atrasados > count * 0.1) {
+      console.log(`  ⚠ ${atrasados}/${count} frames no alcanzaron el presupuesto de ${frameIntervalMs.toFixed(0)}ms:`);
+      console.log('    el spot va más rápido que la captura y el video quedará congelado en el CTA.');
+    }
   }
 
-  // Esperar a que el stage arranque su timeline → sincroniza captura ↔ audio
+  // Dejar asentar fuentes y el primer render del iframe antes de arrancar.
+  await sleep(2000);
+
+  // Disparar el spot manualmente y sincronizar la captura con su timeline.
+  console.log('  ▶ Disparando el spot');
+  await page.click('#play');
   await page
     .waitForFunction(() => window.__spotStarted === true, { timeout: 15000 })
     .catch(() => console.log('  ⚠ No se detectó __spotStarted; capturando igual.'));
@@ -175,7 +198,7 @@ async function renderFormat(fmt, browser) {
     : '';
 
   console.log(`▶ Frames → MP4${needsScale ? ' (escala)' : ''}…`);
-  sh(`ffmpeg -y -framerate ${CAPTURE_FPS} -start_number 0 -i "${frameDir}/frame_%06d.png" -c:v libx264 -pix_fmt yuv420p -preset medium -crf 18 -r ${FPS} ${scaleFlag} "${videoOnly}"`);
+  sh(`ffmpeg -y -framerate ${CAPTURE_FPS} -start_number 0 -i "${frameDir}/frame_%06d.jpg" -c:v libx264 -pix_fmt yuv420p -preset medium -crf 18 -r ${FPS} ${scaleFlag} "${videoOnly}"`);
 
   // Limpiar frames
   fs.readdirSync(frameDir).forEach(f => fs.unlinkSync(path.join(frameDir, f)));
