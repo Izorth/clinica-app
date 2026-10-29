@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { requireAuth, requireRole } from "@/lib/auth-helpers";
+import { requireActor, requireRole } from "@/lib/auth-helpers";
 import { horaInclude } from "@/lib/prisma/includes";
 import { prisma } from "@/lib/prisma";
 import { enviarRecordatorioTemplate } from "@/lib/twilio";
@@ -8,13 +8,21 @@ import { enviarRecordatorioTemplate } from "@/lib/twilio";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const { error } = await requireAuth();
+  const { actor, error } = await requireActor();
   if (error) return error;
 
   const { searchParams } = request.nextUrl;
-  const medicoId = searchParams.get("medicoId");
+  // Un MEDICO ve solo su propia agenda: se ignora el medicoId del query param
+  // (no es un default, es una sobreescritura) para que no pueda pedir la
+  // agenda de otro médico cambiando el parámetro.
+  const medicoId = actor.rol === "MEDICO" ? actor.medicoId : searchParams.get("medicoId");
   const fechaInicio = searchParams.get("fechaInicio");
   const fechaFin = searchParams.get("fechaFin");
+
+  // medicoId null (Usuario MEDICO sin fila Medico) no ve ninguna hora.
+  if (actor.rol === "MEDICO" && !medicoId) {
+    return Response.json([]);
+  }
 
   const horas = await prisma.hora.findMany({
     where: {
