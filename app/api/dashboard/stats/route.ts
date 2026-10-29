@@ -1,16 +1,29 @@
 export const dynamic = "force-dynamic";
 
-import { getServerSession } from "next-auth/next";
 import type { NextRequest } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { requireActor } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(_request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
+  const { actor, error } = await requireActor();
+  if (error) return error;
+
+  // medicoId null (Usuario MEDICO sin fila Medico) no ve ninguna estadística.
+  if (actor.rol === "MEDICO" && !actor.medicoId) {
+    return Response.json({
+      totalPacientes: 0,
+      pacientesEstaSemana: 0,
+      horasHoy: 0,
+      horasHoyConfirmadas: 0,
+      horasPendientes: 0,
+      ingresosMes: 0,
+      mesLabel: "",
+      fechaLabel: "",
+      agendaHoy: [],
+    });
   }
+  const medicoId = actor.rol === "MEDICO" ? actor.medicoId! : null;
 
   const ahora = new Date();
   const hoy = new Date(ahora.toLocaleString("en-US", { timeZone: "America/Santiago" }));
@@ -31,17 +44,45 @@ export async function GET(_request: NextRequest) {
     pagosMes,
     agendaHoy,
   ] = await Promise.all([
-    prisma.paciente.count().catch(() => 0),
-    prisma.paciente.count({ where: { creadoEn: { gte: hace7dias } } }).catch(() => 0),
-    prisma.hora.count({ where: { fecha: { gte: inicioHoy, lt: finHoy } } }).catch(() => 0),
-    prisma.hora.count({ where: { fecha: { gte: inicioHoy, lt: finHoy }, estado: "CONFIRMADA" } }).catch(() => 0),
-    prisma.hora.count({ where: { estado: "PENDIENTE" } }).catch(() => 0),
+    prisma.paciente
+      .count({ where: medicoId ? { horas: { some: { medicoId } } } : undefined })
+      .catch(() => 0),
+    prisma.paciente
+      .count({
+        where: {
+          creadoEn: { gte: hace7dias },
+          ...(medicoId ? { horas: { some: { medicoId } } } : {}),
+        },
+      })
+      .catch(() => 0),
+    prisma.hora
+      .count({ where: { fecha: { gte: inicioHoy, lt: finHoy }, ...(medicoId ? { medicoId } : {}) } })
+      .catch(() => 0),
+    prisma.hora
+      .count({
+        where: {
+          fecha: { gte: inicioHoy, lt: finHoy },
+          estado: "CONFIRMADA",
+          ...(medicoId ? { medicoId } : {}),
+        },
+      })
+      .catch(() => 0),
+    prisma.hora
+      .count({ where: { estado: "PENDIENTE", ...(medicoId ? { medicoId } : {}) } })
+      .catch(() => 0),
     prisma.pago
-      .aggregate({ _sum: { monto: true }, where: { estado: "PAGADO", creadoEn: { gte: inicioMes, lte: finMes } } })
+      .aggregate({
+        _sum: { monto: true },
+        where: {
+          estado: "PAGADO",
+          creadoEn: { gte: inicioMes, lte: finMes },
+          ...(medicoId ? { hora: { medicoId } } : {}),
+        },
+      })
       .catch(() => null),
     prisma.hora
       .findMany({
-        where: { fecha: { gte: inicioHoy, lt: finHoy } },
+        where: { fecha: { gte: inicioHoy, lt: finHoy }, ...(medicoId ? { medicoId } : {}) },
         include: {
           paciente: { select: { nombre: true, apellido: true } },
           medico: { include: { usuario: { select: { nombre: true } } } },
