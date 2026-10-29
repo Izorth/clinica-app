@@ -1,54 +1,62 @@
-import { getServerSession } from "next-auth/next";
 import type { NextRequest } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { requireActor } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const medicoDetalleInclude = {
-  usuario: { select: { id: true, nombre: true, email: true } },
-  horas: {
-    include: {
-      paciente: { select: { nombre: true, apellido: true } },
-    },
-    orderBy: { fecha: "desc" as const },
+const usuarioSelect = { usuario: { select: { id: true, nombre: true, email: true } } } as const;
+
+async function ultimasHoras(medicoId: string) {
+  return prisma.hora.findMany({
+    where: { medicoId },
+    include: { paciente: { select: { nombre: true, apellido: true } } },
+    orderBy: { fecha: "desc" },
     take: 5,
-  },
-} as const;
+  });
+}
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { actor, error } = await requireActor();
+  if (error) return error;
 
   const { id } = await params;
+  const esPropio = actor.rol === "MEDICO" && actor.medicoId === id;
+  // Directorio de médicos: todo el staff puede ver el registro. Pero la
+  // agenda (horas + nombres de pacientes) solo la ven ADMIN/RECEPCIONISTA o
+  // el propio médico sobre sí mismo — otro médico no debe ver a quién atiende
+  // un colega.
+  const puedeVerAgenda = actor.rol === "ADMIN" || actor.rol === "RECEPCIONISTA" || esPropio;
+
   const medico = await prisma.medico.findUnique({
     where: { id },
-    include: medicoDetalleInclude,
+    include: usuarioSelect,
   });
 
   if (!medico) {
     return Response.json({ error: "Médico no encontrado" }, { status: 404 });
   }
 
-  return Response.json(medico);
+  const horas = puedeVerAgenda ? await ultimasHoras(id) : [];
+  return Response.json({ ...medico, horas });
 }
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { actor, error } = await requireActor();
+  if (error) return error;
 
   const { id } = await params;
+  const esPropio = actor.rol === "MEDICO" && actor.medicoId === id;
+  if (actor.rol !== "ADMIN" && !esPropio) {
+    return Response.json({ error: "Acceso denegado" }, { status: 403 });
+  }
+
   const body = await request.json();
   const { nombre, email, especialidad } = body;
 
@@ -73,11 +81,11 @@ export async function PATCH(
 
       return tx.medico.findUniqueOrThrow({
         where: { id },
-        include: medicoDetalleInclude,
+        include: usuarioSelect,
       });
     });
 
-    return Response.json(medico);
+    return Response.json({ ...medico, horas: await ultimasHoras(id) });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return Response.json({ error: "Médico no encontrado" }, { status: 404 });
@@ -101,10 +109,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return Response.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const { error } = await requireActor(["ADMIN"]);
+  if (error) return error;
 
   const { id } = await params;
 
