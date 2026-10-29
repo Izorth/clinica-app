@@ -1,27 +1,37 @@
 import type { NextRequest } from "next/server";
+import type { Prisma } from "@prisma/client";
 
-import { requireAuth, requireRole } from "@/lib/auth-helpers";
+import { requireActor, requireRole } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { formatearRut, validarRut } from "@/lib/utils/rut";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const { error } = await requireAuth();
+  const { actor, error } = await requireActor();
   if (error) return error;
+
+  // medicoId null (Usuario MEDICO sin fila Medico) no ve ningún paciente.
+  if (actor.rol === "MEDICO" && !actor.medicoId) {
+    return Response.json([]);
+  }
 
   const q = request.nextUrl.searchParams.get("q")?.trim();
 
+  const where: Prisma.PacienteWhereInput = {};
+  if (q) {
+    where.OR = [
+      { nombre: { contains: q, mode: "insensitive" } },
+      { apellido: { contains: q, mode: "insensitive" } },
+      { rut: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  if (actor.rol === "MEDICO") {
+    where.horas = { some: { medicoId: actor.medicoId! } };
+  }
+
   const pacientes = await prisma.paciente.findMany({
-    where: q
-      ? {
-          OR: [
-            { nombre: { contains: q, mode: "insensitive" } },
-            { apellido: { contains: q, mode: "insensitive" } },
-            { rut: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where,
     orderBy: { creadoEn: "desc" },
     take: 200,
     select: { id: true, rut: true, nombre: true, apellido: true, telefono: true, email: true },
